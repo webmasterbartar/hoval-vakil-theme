@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="fa"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body class="reservation-page text-on-surface">
+<main class="rez-layout">
+<aside class="rez-sidebar">
+<div class="rez-sidebar-card">
+<div class="rez-sidebar-content">
+<!-- Lawyer Info -->
+<div class="rez-lawyer-head">
+<div class="rez-lawyer-photo-wrap">
+<img id="rez-lawyer-image" alt="دکتر علیرضا افشار" class="rez-lawyer-photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDz1b92vbWFRuzYJlD8ELy2rIu0hXAmN7xQgwb7HuY3f6Y8iwOaWtGJbb-moEu7pMbYGU_dL5Rw86ngyeGUgvUlpsAITymydYUxB9_vhaXNfM7_fXZiJrCBknEQEzc25y3bqYTlEnVK_vmqy52I98QLdrP5N63VXhrkPKK-9jPrMmwPzfMcnNPt4NLbbAwxQ1GulEeZ5VPyNvy31SKCbPwDW1Eoidt_Kbt19bLQLE2u5OKT41KmhSnheBEe3ck4FeouBRH7vAu93eY"/>
+<span class="rez-verified-badge">
+<span class="material-symbols-outlined rez-icon-xs" style="font-variation-settings: 'FILL' 1;">verified</span>
+</span>
+</div>
+<h2 id="rez-lawyer-name" class="rez-lawyer-name">دکتر علیرضا افشار</h2>
+<p id="rez-lawyer-specialty" class="rez-lawyer-specialty">متخصص دعاوی ملکی</p>
+<div class="rez-rating">
+<span class="material-symbols-outlined rez-icon-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="rez-rating-value">4.9</span>
+<span class="rez-rating-count">(۱۲۴ نظر)</span>
+</div>
+</div>
+<div class="rez-location">
+<span class="material-symbols-outlined rez-icon-sm">location_on</span>
+<span id="rez-lawyer-location">تهران، سعادت‌آباد</span>
+</div>
+<div class="rez-divider"></div>
+<div class="rez-summary-list">
+<div class="rez-summary-item">
+<span class="rez-summary-label">خدمت انتخاب شده:</span>
+<span id="rez-selected-service" class="rez-summary-value">مشاوره حضوری</span>
+</div>
+<div class="rez-summary-item">
+<span class="rez-summary-label">هزینه مشاوره:</span>
+<span id="rez-selected-price" class="rez-summary-value">۵۰۰,۰۰۰ تومان</span>
+</div>
+<div class="rez-summary-item">
+<span class="rez-summary-label">زمان انتخابی:</span>
+<span id="rez-selected-datetime" class="rez-summary-value">یکشنبه ۱۲ آذر — ۱۰:۰۰</span>
+</div>
+</div>
+<div class="rez-total">
+<span class="rez-total-label">مبلغ قابل پرداخت:</span>
+<span id="rez-total-price" class="rez-total-value">۵۰۰,۰۰۰ تومان</span>
+</div>
+</div>
+</div>
+</aside>
+<section class="rez-main">
+<div class="rez-card">
+<h3 class="rez-section-title">
+<span class="rez-title-mark"></span>
+                    نوع مشاوره را انتخاب کنید
+                </h3>
+<div class="rez-service-grid">
+<button class="rez-service-card is-selected" type="button">
+<div class="rez-service-icon is-selected">
+<span class="material-symbols-outlined rez-icon-lg">groups</span>
+</div>
+<div class="rez-service-content">
+<div class="rez-service-title">مشاوره حضوری</div>
+<div class="rez-service-subtitle">۴۵ دقیقه — دفتر وکالت</div>
+</div>
+<div class="rez-service-price is-selected">۵۰۰,۰۰۰ تومان</div>
+</button>
+<button class="rez-service-card" type="button">
+<div class="rez-service-icon">
+<span class="material-symbols-outlined rez-icon-lg">call</span>
+</div>
+<div class="rez-service-content">
+<div class="rez-service-title">مشاوره تلفنی</div>
+<div class="rez-service-subtitle">۲۰ دقیقه — تماس مستقیم</div>
+</div>
+<div class="rez-service-price">۲۰۰,۰۰۰ تومان</div>
+</button>
+<button class="rez-service-card" type="button">
+<div class="rez-service-icon">
+<span class="material-symbols-outlined rez-icon-lg">chat</span>
+</div>
+<div class="rez-service-content">
+<div class="rez-service-title">مشاوره متنی</div>
+<div class="rez-service-subtitle">گفتگو در اپلیکیشن</div>
+</div>
+<div class="rez-service-price">۱۰۰,۰۰۰ تومان</div>
+</button>
+<button class="rez-service-card" type="button">
+<div class="rez-service-icon">
+<span class="material-symbols-outlined rez-icon-lg">videocam</span>
+</div>
+<div class="rez-service-content">
+<div class="rez-service-title">مشاوره تصویری</div>
+<div class="rez-service-subtitle">۳۰ دقیقه — گوگل میت</div>
+</div>
+<div class="rez-service-price">۳۵۰,۰۰۰ تومان</div>
+</button>
+</div>
+</div>
+<div class="rez-card">
+<h3 class="rez-section-title">
+<span class="rez-title-mark"></span>
+                    زمان مشاوره را تعیین کنید
+                </h3>
+<div class="rez-schedule">
+<div class="rez-calendar">
+<div class="rez-calendar-head">
+<button class="rez-calendar-nav" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+<span id="rez-calendar-month" class="rez-calendar-month">آذر ۱۴۰۳</span>
+<button class="rez-calendar-nav" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
+</div>
+<div class="rez-weekdays">
+<div>ش</div><div>ی</div><div>د</div><div>س</div><div>چ</div><div>پ</div><div>ج</div>
+</div>
+<div id="rez-days-grid" class="rez-days">
+<div class="is-muted">۲۸</div>
+<div class="is-muted">۲۹</div>
+<div class="is-muted">۳۰</div>
+<button type="button">۱</button>
+<button type="button">۲</button>
+<button type="button">۳</button>
+<div class="is-disabled">۴</div>
+<button type="button">۹</button>
+<button type="button">۱۰</button>
+<button type="button">۱۱</button>
+<button class="is-selected" type="button">۱۲</button>
+<button type="button">۱۳</button>
+<button type="button">۱۴</button>
+<div class="is-disabled">۱۵</div>
+</div>
+</div>
+<div class="rez-time-panel">
+<div class="rez-time-title">ساعت‌های موجود</div>
+<div class="rez-time-grid">
+<button class="is-selected selected" type="button">۰۹:۰۰</button>
+<button type="button">۱۰:۰۰</button>
+<button type="button">۱۱:۳۰</button>
+<button type="button">۱۳:۰۰</button>
+<button type="button">۱۵:۳۰</button>
+<button type="button">۱۷:۰۰</button>
+</div>
+</div>
+</div>
+</div>
+<div class="rez-card">
+<h3 class="rez-section-title">
+<span class="rez-title-mark"></span>
+                    اطلاعات پرونده و پرداخت
+                </h3>
+<form class="rez-form" id="rez-form">
+<div class="rez-form-grid">
+<div>
+<label class="rez-label">نام و نام خانوادگی</label>
+<input id="rez-full-name" class="rez-input" placeholder="مثلا: محمد رضایی" type="text"/>
+</div>
+<div>
+<label class="rez-label">شماره همراه</label>
+<input id="rez-phone" class="rez-input rez-ltr" placeholder="۰۹۱۲۰۰۰۰۰۰۰" type="tel"/>
+</div>
+</div>
+<div>
+<label class="rez-label">کد ملی</label>
+<input id="rez-national-id" class="rez-input rez-ltr" placeholder="۰۰۱۰۰۰۲۰۰۳" type="text"/>
+</div>
+<div>
+<label class="rez-label">توضیحات پرونده</label>
+<textarea id="rez-description" class="rez-input" placeholder="شرح مختصری از مشکل حقوقی خود را بنویسید..." rows="4"></textarea>
+</div>
+<div>
+<label class="rez-label">بارگذاری مستندات (اختیاری)</label>
+<div class="rez-upload">
+<span class="material-symbols-outlined rez-upload-icon">cloud_upload</span>
+<p class="rez-upload-text">فایل‌ها را به اینجا بکشید یا برای انتخاب کلیک کنید</p>
+<p class="rez-upload-hint">فرمت‌های مجاز: PDF, JPG, PNG (حداکثر ۱۰ مگابایت)</p>
+</div>
+</div>
+<div class="rez-payment">
+<label class="rez-label">روش پرداخت</label>
+<div class="rez-payment-options">
+<label class="rez-payment-option is-selected">
+<input checked="" name="payment" type="radio" value="online"/>
+<span class="rez-payment-text">پرداخت آنلاین (تخفیف ۵٪)</span>
+<span class="material-symbols-outlined rez-payment-icon">payments</span>
+</label>
+<label class="rez-payment-option">
+<input name="payment" type="radio" value="office"/>
+<span class="rez-payment-text">پرداخت حضوری در دفتر</span>
+<span class="material-symbols-outlined rez-payment-icon">account_balance_wallet</span>
+</label>
+</div>
+</div>
+<button class="rez-submit-btn" type="submit">
+                        تایید نهایی رزرو
+                        <span class="material-symbols-outlined">arrow_back</span>
+</button>
+</form>
+</div>
+<div class="rez-success is-hidden" id="success-message">
+<div class="rez-success-icon">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h2 class="rez-success-title">نوبت شما با موفقیت رزرو شد</h2>
+<p class="rez-success-text">کد پیگیری شما: <span class="rez-code" id="rez-tracking-code">HK-1403-8876</span></p>
+</div>
+<div class="rez-success-note" id="rez-success-note">
+                    جزئیات نوبت برای شماره ۰۹۱۲xxxxxxx پیامک شد.
+                </div>
+<div class="rez-success-actions">
+<button class="rez-success-btn-primary" type="button">بازگشت به پنل کاربری</button>
+<button class="rez-success-btn-secondary" type="button">چاپ رسید</button>
+</div>
+</div>
+</section>
+</main>
+<script>
+    const rezervParams = new URLSearchParams(window.location.search);
+    const reservationApi = `${window.location.origin}/wp-json/hovalvakil/v1/reservations`;
+    const lawyerApiBase = `${window.location.origin}/wp-json/hovalvakil/v1/lawyers`;
+
+    const rezLawyerId = Number(rezervParams.get('lawyer_id') || rezervParams.get('id') || 0);
+    const rezName = rezervParams.get('name');
+    const rezSpecialty = rezervParams.get('specialty');
+    const rezCity = rezervParams.get('city');
+    const rezImage = rezervParams.get('image');
+    const rezPrice = rezervParams.get('price');
+    const rezService = rezervParams.get('service');
+    const rezDate = rezervParams.get('date');
+    const rezTime = rezervParams.get('time');
+
+    const rezNameEl = document.getElementById('rez-lawyer-name');
+    const rezSpecialtyEl = document.getElementById('rez-lawyer-specialty');
+    const rezLocationEl = document.getElementById('rez-lawyer-location');
+    const rezImageEl = document.getElementById('rez-lawyer-image');
+    const rezServiceEl = document.getElementById('rez-selected-service');
+    const rezPriceEl = document.getElementById('rez-selected-price');
+    const rezDatetimeEl = document.getElementById('rez-selected-datetime');
+    const rezTotalEl = document.getElementById('rez-total-price');
+    const rezForm = document.getElementById('rez-form');
+    const successMessage = document.getElementById('success-message');
+    const successNoteEl = document.getElementById('rez-success-note');
+    const trackingCodeEl = document.getElementById('rez-tracking-code');
+    const submitBtn = rezForm?.querySelector('.rez-submit-btn');
+    const daysGrid = document.getElementById('rez-days-grid');
+    const calendarMonthEl = document.getElementById('rez-calendar-month');
+
+    const persianMonthNames = [
+        'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+    ];
+
+    if (rezName) {
+        rezNameEl.textContent = rezName;
+        rezImageEl.alt = rezName;
+    }
+    if (rezSpecialty) rezSpecialtyEl.textContent = rezSpecialty;
+    if (rezCity) rezLocationEl.textContent = `${rezCity}، دفتر مرکزی`;
+    if (rezImage) rezImageEl.src = rezImage;
+    if (rezService) rezServiceEl.textContent = rezService;
+    if (rezPrice) {
+        rezPriceEl.textContent = rezPrice;
+        rezTotalEl.textContent = rezPrice;
+    }
+    if (rezDate || rezTime) {
+        const datePart = rezDate || 'تاریخ انتخاب نشده';
+        const timePart = rezTime || '--:--';
+        rezDatetimeEl.textContent = `${datePart} — ${timePart}`;
+    }
+
+    async function hydrateLawyerFromServer() {
+        if (!rezLawyerId) return;
+        try {
+            const response = await fetch(`${lawyerApiBase}/${rezLawyerId}`, { credentials: 'same-origin' });
+            if (!response.ok) return;
+            const data = await response.json();
+            if (!data?.ok || !data?.item) return;
+            const item = data.item;
+            if (item.name) {
+                rezNameEl.textContent = item.name;
+                rezImageEl.alt = item.name;
+            }
+            if (item.specialty) rezSpecialtyEl.textContent = item.specialty;
+            if (item.city) rezLocationEl.textContent = `${item.city}، دفتر مرکزی`;
+            if (item.image) rezImageEl.src = item.image;
+            if (item.price_from) {
+                rezPriceEl.textContent = item.price_from;
+                rezTotalEl.textContent = item.price_from;
+            }
+        } catch (e) {
+            // Keep URL-based fallback values.
+        }
+    }
+    hydrateLawyerFromServer();
+
+    async function resolveLawyerIdByName() {
+        const currentName = rezNameEl?.textContent?.trim() || '';
+        if (!currentName) return 0;
+        try {
+            const url = `${lawyerApiBase}?q=${encodeURIComponent(currentName)}&per_page=20`;
+            const response = await fetch(url, { credentials: 'same-origin' });
+            if (!response.ok) return 0;
+            const data = await response.json();
+            const items = Array.isArray(data?.items) ? data.items : [];
+            const exact = items.find((item) => (item?.name || '').trim() === currentName);
+            const first = exact || items[0];
+            return Number(first?.id || 0);
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function toEnglishDigits(value) {
+        return (value || '').replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    }
+
+    function toPersianParts(date) {
+        const parts = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric'
+        }).formatToParts(date);
+        const getPart = (type) => parts.find((p) => p.type === type)?.value || '';
+        const dayNum = Number(toEnglishDigits(getPart('day')));
+        const monthNum = Number(toEnglishDigits(getPart('month')));
+        const yearNum = Number(toEnglishDigits(getPart('year')));
+        return { dayNum, monthNum, yearNum };
+    }
+
+    function renderCalendarDays() {
+        if (!daysGrid || !calendarMonthEl) return;
+        const now = new Date();
+        const nowParts = toPersianParts(now);
+        calendarMonthEl.textContent = `${persianMonthNames[(nowParts.monthNum || 1) - 1]} ${nowParts.yearNum}`;
+
+        const dayButtons = [];
+        for (let i = 0; i < 14; i += 1) {
+            const d = new Date(now);
+            d.setDate(now.getDate() + i);
+            const p = toPersianParts(d);
+            dayButtons.push(`<button type="button" class="${i === 0 ? 'is-selected selected' : ''}">${p.dayNum}</button>`);
+        }
+        daysGrid.innerHTML = dayButtons.join('');
+    }
+
+    const serviceCards = Array.from(document.querySelectorAll('.rez-service-card'));
+    serviceCards.forEach((card) => {
+        card.addEventListener('click', () => {
+            serviceCards.forEach((c) => {
+                c.classList.remove('is-selected');
+                c.querySelector('.rez-service-icon')?.classList.remove('is-selected');
+                c.querySelector('.rez-service-price')?.classList.remove('is-selected');
+            });
+            card.classList.add('is-selected');
+            card.querySelector('.rez-service-icon')?.classList.add('is-selected');
+            card.querySelector('.rez-service-price')?.classList.add('is-selected');
+            const title = card.querySelector('.rez-service-title')?.textContent?.trim() || 'مشاوره';
+            const price = card.querySelector('.rez-service-price')?.textContent?.trim() || '';
+            rezServiceEl.textContent = title;
+            if (price) {
+                rezPriceEl.textContent = price;
+                rezTotalEl.textContent = price;
+            }
+        });
+    });
+
+    let selectedDayValue = '';
+    let selectedTimeValue = '';
+
+    renderCalendarDays();
+
+    function bindDayButtons() {
+        const dayButtons = Array.from(document.querySelectorAll('.rez-days button'));
+        dayButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                dayButtons.forEach((b) => {
+                    b.classList.remove('is-selected');
+                    b.classList.remove('selected');
+                });
+                btn.classList.add('is-selected');
+                btn.classList.add('selected');
+                selectedDayValue = btn.textContent.trim();
+                const time = selectedTimeValue || '--:--';
+                rezDatetimeEl.textContent = `روز ${selectedDayValue} — ${time}`;
+            });
+        });
+    }
+    bindDayButtons();
+
+    const timeButtons = Array.from(document.querySelectorAll('.rez-time-grid button'));
+    timeButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            timeButtons.forEach((b) => {
+                b.classList.remove('is-selected');
+                b.classList.remove('selected');
+            });
+            btn.classList.add('is-selected');
+            btn.classList.add('selected');
+            selectedTimeValue = btn.textContent.trim();
+            const day = selectedDayValue || '--';
+            rezDatetimeEl.textContent = `روز ${day} — ${selectedTimeValue}`;
+        });
+    });
+
+    // Initialize selected date/time from preselected buttons.
+    selectedDayValue = document.querySelector('.rez-days button.is-selected, .rez-days button.selected')?.textContent?.trim() || '';
+    selectedTimeValue = document.querySelector('.rez-time-grid button.is-selected, .rez-time-grid button.selected')?.textContent?.trim() || '';
+    if (selectedDayValue || selectedTimeValue) {
+        rezDatetimeEl.textContent = `روز ${selectedDayValue || '--'} — ${selectedTimeValue || '--:--'}`;
+    }
+
+    rezForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const fullName = document.getElementById('rez-full-name')?.value?.trim() || '';
+        const phone = document.getElementById('rez-phone')?.value?.trim() || '';
+        const nationalId = document.getElementById('rez-national-id')?.value?.trim() || '';
+        const description = document.getElementById('rez-description')?.value?.trim() || '';
+        const paymentType = document.querySelector('input[name="payment"]:checked')?.value || 'online';
+        const selectedService = rezServiceEl.textContent?.trim() || 'مشاوره';
+        const datePart = selectedDayValue ? `روز ${selectedDayValue}` : '';
+        const timePart = selectedTimeValue || '';
+
+        if (!fullName || !phone) {
+            alert('نام و شماره همراه الزامی است.');
+            return;
+        }
+        if (!datePart || !timePart) {
+            alert('لطفا ابتدا زمان مشاوره را انتخاب کنید.');
+            return;
+        }
+
+        let effectiveLawyerId = rezLawyerId;
+        if (!effectiveLawyerId) {
+            effectiveLawyerId = await resolveLawyerIdByName();
+        }
+        if (!effectiveLawyerId) {
+            alert('وکیل انتخاب نشده است. لطفا از صفحه پروفایل وکیل وارد رزرو شوید.');
+            return;
+        }
+
+        const payload = {
+            lawyer_id: effectiveLawyerId,
+            lawyer_name: rezNameEl.textContent?.trim() || '',
+            full_name: fullName,
+            phone,
+            national_id: nationalId,
+            description,
+            service: selectedService,
+            date: datePart,
+            time: timePart,
+            payment_type: paymentType,
+            price: rezTotalEl.textContent?.trim() || '',
+        };
+
+        if (submitBtn) submitBtn.disabled = true;
+        if (submitBtn) submitBtn.textContent = 'در حال ثبت...';
+
+        try {
+            const response = await fetch(reservationApi, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.ok) {
+                throw new Error(data?.message || 'reservation_failed');
+            }
+            trackingCodeEl.textContent = data.trackingCode || 'HK-XXXX';
+            if (successNoteEl) {
+                const maskedPhone = phone.length >= 4 ? `${phone.slice(0, 4)}xxxxxxx` : phone;
+                successNoteEl.textContent = `رزرو شما با موفقیت ثبت شد و در پنل مدیریت قابل مشاهده است. اطلاع رسانی برای شماره ${maskedPhone} انجام می شود.`;
+            }
+            rezForm.closest('.rez-card')?.classList.add('is-hidden');
+            successMessage?.classList.remove('is-hidden');
+            alert('رزرو با موفقیت ثبت شد.');
+        } catch (error) {
+            const message = (error && error.message) ? error.message : 'ثبت رزرو انجام نشد. لطفا دوباره تلاش کنید.';
+            alert(message);
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) submitBtn.innerHTML = `تایید نهایی رزرو <span class="material-symbols-outlined">arrow_back</span>`;
+        }
+    });
+</script>
+</body></html>

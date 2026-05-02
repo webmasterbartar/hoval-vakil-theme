@@ -1,0 +1,211 @@
+.tamas-page {
+    background: var(--surface);
+    color: var(--on-surface);
+}
+
+.tamas-hero {
+    background: linear-gradient(140deg, var(--primary) 0%, var(--primary-container) 100%);
+    padding: 4.5rem 0 5.25rem;
+    color: var(--on-primary);
+}
+
+.tamas-hero h1 {
+    font-size: clamp(1.9rem, 3.2vw, 2.8rem);
+    margin-bottom: 0.9rem;
+    font-weight: 900;
+}
+
+.tamas-hero p {
+    color: var(--primary-fixed-dim, #b7c6ee);
+    font-size: 1.02rem;
+    max-width: 42rem;
+    line-height: 1.9;
+}
+
+.tamas-content {
+    margin-top: -2.25rem;
+    padding-bottom: 3rem;
+}
+
+.tamas-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.tamas-card {
+    background: var(--surface-container-lowest);
+    border: 1px solid rgba(197, 198, 207, 0.3);
+    border-radius: 0.9rem;
+    padding: 1.25rem;
+    box-shadow: 0 4px 24px rgba(4, 21, 52, 0.05);
+}
+
+.tamas-card h2 {
+    font-size: 1.3rem;
+    color: var(--primary-container);
+    font-weight: 800;
+    margin-bottom: 1.25rem;
+}
+
+.tamas-contact-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+.tamas-contact-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.tamas-contact-list .material-symbols-outlined {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 0.65rem;
+    background: var(--surface);
+    color: var(--secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.tamas-contact-list strong {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--on-surface-variant);
+    margin-bottom: 0.25rem;
+}
+
+.tamas-contact-list p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.75;
+}
+
+.tamas-form {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.tamas-row {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tamas-field label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--on-surface-variant);
+    font-weight: 600;
+}
+
+.tamas-field input,
+.tamas-field select,
+.tamas-field textarea {
+    width: 100%;
+    border: 1px solid transparent;
+    background: var(--surface-container-low);
+    color: var(--on-surface);
+    border-radius: 0.65rem;
+    padding: 0.75rem 0.85rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.tamas-field input:focus,
+.tamas-field select:focus,
+.tamas-field textarea:focus {
+    border-color: var(--secondary);
+    background: var(--surface-container-lowest);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(117, 91, 0, 0.12);
+}
+
+.tamas-field textarea {
+    resize: vertical;
+    min-height: 6.5rem;
+}
+
+.tamas-submit-wrap {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tamas-submit-wrap button {
+    background: var(--secondary);
+    color: var(--on-secondary);
+    border: 0;
+    border-radius: 0.65rem;
+    padding: 0.75rem 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-family: inherit;
+}
+
+.tamas-submit-wrap button:hover {
+    filter: brightness(1.06);
+}
+
+.tamas-feedback {
+    margin: 0.2rem 0 0;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.55rem;
+    font-size: 0.86rem;
+}
+
+.tamas-feedback-error {
+    background: rgba(186, 26, 26, 0.09);
+    color: #7f1010;
+}
+
+.tamas-feedback-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #065f46;
+}
+
+@media (max-width: 1024px) {
+    .tamas-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 767px) {
+    .tamas-hero {
+        padding-top: 3.25rem;
+        padding-bottom: 4.25rem;
+    }
+
+    .tamas-content {
+        margin-top: -1.8rem;
+    }
+
+    .tamas-card {
+        padding: 1rem;
+        border-radius: 0.8rem;
+    }
+
+    .tamas-row {
+        grid-template-columns: 1fr;
+    }
+
+    .tamas-submit-wrap {
+        justify-content: stretch;
+    }
+
+    .tamas-submit-wrap button {
+        width: 100%;
+        justify-content: center;
+    }
+}

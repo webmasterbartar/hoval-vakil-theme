@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title id="profile-page-title">پروفایل دکتر علیرضا افشار | هولوکیل</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="text-on-surface">
+    <main class="profile-content">
+        <!-- PROFILE HERO -->
+        <section class="profile-hero">
+            <div class="profile-main-info">
+                <div class="profile-image-container">
+                    <img id="profile-image" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDN0uNztdrz99739zIUprZVNq6NVcP4STOdNGj2KdkjF4CQnVCdn1ZaJ2m7ea9rB-F8FDIpCVeTAMUH6aF0YgJoaLHwBWwC3l1TtsAMXE4CBnug0aIzXotjp9aHEnZklCOBuTUrkCddEFWh2M54cLTj3SxJQDy3mOF4AUvX4ySJ72fHHgB-3JBLadMB9LgYjjsQlqIBxH3VRDsWhHV0tRg6UCZGWCDTMYEoljRA5Hgv2MQq7C3Uy3K0t4HYhU2tNXhCK3h3D2ZXCi0" alt="دکتر علیرضا افشار">
+                    <div class="verified-badge">
+                        <span class="material-symbols-outlined" style="font-size: 14px; font-variation-settings: 'FILL' 1;">check</span>
+                    </div>
+                </div>
+                
+                <div class="profile-text-info">
+                    <div class="profile-title-row">
+                        <h1 id="profile-name" class="profile-name">دکتر علیرضا افشار</h1>
+                        <span class="badge-premium">
+                            <span class="material-symbols-outlined" style="font-size: 16px; font-variation-settings: 'FILL' 1;">workspace_premium</span>
+                            وکیل تایید شده هولوکیل
+                        </span>
+                    </div>
+                    
+                    <div id="profile-tags" class="profile-tags">
+                        <span class="tag-item">متخصص دعاوی ملکی</span>
+                        <span class="tag-item">حقوق تجاری</span>
+                        <span class="tag-item primary">پایه یک دادگستری</span>
+                    </div>
+
+                    <div class="profile-stats-mini">
+                        <div class="stat-mini-item">
+                            <span class="font-bold">۴.۹</span>
+                            <span class="material-symbols-outlined" style="color: #f59e0b; font-variation-settings: 'FILL' 1;">star</span>
+                            <span class="text-xs text-on-surface-variant">(۱۲۴ نظر)</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-details-grid">
+                        <div class="detail-item">
+                            <span class="material-symbols-outlined">location_on</span>
+                            <span id="profile-location">تهران، سعادت‌آباد</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="material-symbols-outlined">work_history</span>
+                            <span id="profile-experience">۱۵ سال تجربه موثر</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="material-symbols-outlined">school</span>
+                            <span>دکترای حقوق خصوصی — دانشگاه تهران</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="material-symbols-outlined">description</span>
+                            <span id="profile-license">شماره پروانه: ۱۲۳۴۵۶</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-action-sidebar">
+                <div class="action-card">
+                    <div class="pricing-info">
+                        <p class="price-label">حق‌الوکاله از</p>
+                        <p id="profile-price" class="price-value">۵۰۰,۰۰۰ تومان</p>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-primary-sm" style="width: 100%; padding: 0.875rem;">رزرو نوبت حضوری</button>
+                        <button class="btn-register-lawyer" style="display: block; width: 100%; border: 1px solid var(--primary); padding: 0.875rem;">مشاوره تلفنی</button>
+                        <button class="btn-register-lawyer" style="display: block; width: 100%; border: 1px solid var(--primary); padding: 0.875rem;">مشاوره متنی</button>
+                    </div>
+                    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: var(--on-surface-variant); display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">calendar_today</span>
+                        <span>اولین نوبت آزاد: فردا ۱۰:۰۰</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB NAV -->
+        <div class="tab-nav-wrapper">
+            <ul class="tab-nav" id="profile-tabs">
+                <li class="active" data-tab="about">درباره وکیل</li>
+                <li data-tab="specs">تخصص‌ها</li>
+                <li data-tab="records">سوابق</li>
+                <li data-tab="reviews">نظرات</li>
+                <li data-tab="calendar">تقویم نوبت</li>
+            </ul>
+        </div>
+
+        <div class="profile-grid-layout">
+            <div class="profile-main-content">
+                <!-- Tab: About -->
+                <div id="about" class="tab-content active">
+                    <section class="content-block">
+                        <h2 class="block-title">
+                            <span class="material-symbols-outlined">person</span>
+                            بیوگرافی و درباره وکیل
+                        </h2>
+                        <p id="profile-bio" class="text-on-surface-variant" style="line-height: 1.8; margin-bottom: 1.5rem;">
+                            دکتر علیرضا افشار، وکیل پایه یک دادگستری و فارغ‌التحصیل مقطع دکتری از دانشگاه تهران، با بیش از ۱۵ سال سابقه فعالیت مستمر در حوزه دعاوی ملکی و تجاری، یکی از وکلای سرشناس در منطقه سعادت‌آباد تهران هستند. ایشان با تمرکز بر پرونده‌های پیچیده حقوقی، همواره تلاش دارند تا با رویکردی علمی و دقیق، بهترین راهکارهای قانونی را برای مراجعین خود فراهم آورند.
+                        </p>
+                        <div class="profile-tags">
+                            <span class="tag-item">دعاوی ثبتی</span>
+                            <span class="tag-item">قراردادهای پیمانکاری</span>
+                            <span class="tag-item">داوری تجاری بین‌المللی</span>
+                            <span class="tag-item">سرقفلی و حق کسب و پیشه</span>
+                        </div>
+                    </section>
+
+                    <!-- Stats Row -->
+                    <div class="stats-grid-row">
+                        <div class="stat-box">
+                            <span class="material-symbols-outlined">history_edu</span>
+                            <p class="font-bold" style="font-size: 1.25rem;">۱۵ سال</p>
+                            <p class="text-xs text-on-surface-variant">تجربه</p>
+                        </div>
+                        <div class="stat-box">
+                            <span class="material-symbols-outlined">forum</span>
+                            <p class="font-bold" style="font-size: 1.25rem;">۱۲۴ نظر</p>
+                            <p class="text-xs text-on-surface-variant">مثبت</p>
+                        </div>
+                        <div class="stat-box">
+                            <span class="material-symbols-outlined">sentiment_satisfied</span>
+                            <p class="font-bold" style="font-size: 1.25rem;">۹۸٪</p>
+                            <p class="text-xs text-on-surface-variant">رضایت</p>
+                        </div>
+                        <div class="stat-box">
+                            <span class="material-symbols-outlined">task_alt</span>
+                            <p class="font-bold" style="font-size: 1.25rem;">۵۰۰+</p>
+                            <p class="text-xs text-on-surface-variant">پرونده موفق</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Specs -->
+                <div id="specs" class="tab-content">
+                    <section class="content-block">
+                        <h2 class="block-title">تخصص‌های وکیل</h2>
+                        <div class="service-grid">
+                            <div class="service-card">دعاوی ملکی و ثبتی</div>
+                            <div class="service-card">حقوق شرکت‌ها و تجارت</div>
+                            <div class="service-card">قراردادهای داخلی و خارجی</div>
+                            <div class="service-card">دفاع در پرونده‌های کیفری</div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab: Records -->
+                <div id="records" class="tab-content">
+                    <section class="content-block">
+                        <h2 class="block-title">سوابق تحصیلی و اجرایی</h2>
+                        <ul style="list-style: disc; padding-right: 1.5rem; color: var(--on-surface-variant);">
+                            <li style="margin-bottom: 1rem;">دکترای حقوق خصوصی از دانشگاه تهران (رتبه برتر)</li>
+                            <li style="margin-bottom: 1rem;">مشاور حقوقی چندین هلدینگ معتبر ساختمانی</li>
+                            <li style="margin-bottom: 1rem;">عضو کانون وکلای دادگستری مرکز از سال ۱۳۸۸</li>
+                        </ul>
+                    </section>
+                </div>
+
+                <!-- Tab: Reviews -->
+                <div id="reviews" class="tab-content">
+                    <section class="content-block">
+                        <h2 class="block-title">
+                            <span class="material-symbols-outlined">reviews</span>
+                            نظرات موکلین
+                        </h2>
+                        
+                        <!-- Reviews Summary -->
+                        <div class="reviews-summary-wrapper">
+                            <div class="rating-average">
+                                <span class="rating-score">۴.۹</span>
+                                <div class="review-rating big">
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                </div>
+                                <span class="rating-count">۱۲۴ نظر ثبت شده</span>
+                            </div>
+                            <div class="rating-bars">
+                                <div class="rating-bar-item">
+                                    <span class="bar-label">۵ ستاره</span>
+                                    <div class="bar-bg"><div class="bar-fill" style="width: 85%;"></div></div>
+                                    <span class="bar-value">۸۵٪</span>
+                                </div>
+                                <div class="rating-bar-item">
+                                    <span class="bar-label">۴ ستاره</span>
+                                    <div class="bar-bg"><div class="bar-fill" style="width: 10%;"></div></div>
+                                    <span class="bar-value">۱۰٪</span>
+                                </div>
+                                <div class="rating-bar-item">
+                                    <span class="bar-label">۳ ستاره</span>
+                                    <div class="bar-bg"><div class="bar-fill" style="width: 3%;"></div></div>
+                                    <span class="bar-value">۳٪</span>
+                                </div>
+                                <div class="rating-bar-item">
+                                    <span class="bar-label">۲ ستاره</span>
+                                    <div class="bar-bg"><div class="bar-fill" style="width: 1%;"></div></div>
+                                    <span class="bar-value">۱٪</span>
+                                </div>
+                                <div class="rating-bar-item">
+                                    <span class="bar-label">۱ ستاره</span>
+                                    <div class="bar-bg"><div class="bar-fill" style="width: 1%;"></div></div>
+                                    <span class="bar-value">۱٪</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="review-card">
+                            <div class="review-header">
+                                <div class="reviewer-info">
+                                    <div class="reviewer-avatar">ر.ن</div>
+                                    <div class="reviewer-text-info">
+                                        <p class="font-bold">رضا ناصری</p>
+                                        <p class="text-xs text-on-surface-variant">۲ هفته پیش</p>
+                                    </div>
+                                </div>
+                                <div class="review-rating">
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                </div>
+                            </div>
+                            <p class="review-text">بسیار وکیل دقیق و مسلطی هستند. پرونده ملکی بنده رو با موفقیت به سرانجام رسوندند.</p>
+                        </div>
+                        <div class="review-card">
+                            <div class="review-header">
+                                <div class="reviewer-info">
+                                    <div class="reviewer-avatar">م.ک</div>
+                                    <div class="reviewer-text-info">
+                                        <p class="font-bold">مریم کریمی</p>
+                                        <p class="text-xs text-on-surface-variant">۱ ماه پیش</p>
+                                    </div>
+                                </div>
+                                <div class="review-rating">
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined filled">star</span>
+                                    <span class="material-symbols-outlined">star</span>
+                                </div>
+                            </div>
+                            <p class="review-text">برخورد بسیار محترمانه و راهکارهای قانونی عالی برای مشاوره تلفنی ارائه دادند.</p>
+                        </div>
+                        
+                        <div style="margin-top: 2rem; text-align: center;">
+                            <button class="btn-primary-sm" style="background: transparent; border: 1px solid var(--primary); color: var(--primary);">مشاهده تمام نظرات</button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Tab: Calendar (RESERVATION) -->
+                <div id="calendar" class="tab-content">
+                    <section class="content-block">
+                        <h2 class="block-title">
+                            <span class="material-symbols-outlined">event_available</span>
+                            رزرو نوبت مشاوره
+                        </h2>
+                        
+                        <div class="calendar-wrapper">
+                            <div class="calendar-header">
+                                <p class="text-sm font-bold mb-4">۱. انتخاب روز:</p>
+                                <div class="date-selector">
+                                    <div class="day-slot active">
+                                        <span class="day-name">امروز</span>
+                                        <span class="day-number">۲۰</span>
+                                        <span class="day-name">فروردین</span>
+                                    </div>
+                                    <div class="day-slot">
+                                        <span class="day-name">شنبه</span>
+                                        <span class="day-number">۲۱</span>
+                                        <span class="day-name">فروردین</span>
+                                    </div>
+                                    <div class="day-slot">
+                                        <span class="day-name">یکشنبه</span>
+                                        <span class="day-number">۲۲</span>
+                                        <span class="day-name">فروردین</span>
+                                    </div>
+                                    <div class="day-slot">
+                                        <span class="day-name">دوشنبه</span>
+                                        <span class="day-number">۲۳</span>
+                                        <span class="day-name">فروردین</span>
+                                    </div>
+                                    <div class="day-slot">
+                                        <span class="day-name">سه‌شنبه</span>
+                                        <span class="day-number">۲۴</span>
+                                        <span class="day-name">فروردین</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="time-slots-section">
+                                <p class="time-grid-title">
+                                    <span class="material-symbols-outlined">wb_sunny</span>
+                                    نوبت‌های صبح
+                                </p>
+                                <div class="time-grid">
+                                    <div class="time-item">۰۹:۰۰</div>
+                                    <div class="time-item selected">۰۹:۳۰</div>
+                                    <div class="time-item disabled">۱۰:۰۰</div>
+                                    <div class="time-item">۱۰:۳۰</div>
+                                </div>
+
+                                <p class="time-grid-title" style="margin-top: 2rem;">
+                                    <span class="material-symbols-outlined">dark_mode</span>
+                                    نوبت‌های عصر
+                                </p>
+                                <div class="time-grid">
+                                    <div class="time-item">۱۶:۰۰</div>
+                                    <div class="time-item">۱۶:۳۰</div>
+                                    <div class="time-item">۱۷:۰۰</div>
+                                    <div class="time-item">۱۷:۳۰</div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 3rem; text-align: center;">
+                                <button id="go-to-reservation-btn" class="btn-primary-sm" style="padding: 1rem 4rem; font-size: 1rem;">تایید و مرحله بعد</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Services (Originally here, moved or kept visible) -->
+                 <section class="content-block">
+                    <h2 class="block-title">
+                        <span class="material-symbols-outlined">concierge</span>
+                        خدمات و تعرفه‌ها
+                    </h2>
+                    <div class="service-grid">
+                        <div class="service-card">
+                            <div class="service-icon">
+                                <span class="material-symbols-outlined">groups</span>
+                            </div>
+                            <div class="service-info">
+                                <h3 class="font-bold">مشاوره حضوری</h3>
+                                <p class="text-xs text-on-surface-variant">۳۰ دقیقه گفتگو</p>
+                            </div>
+                            <div class="service-price">
+                                <p class="font-bold text-sm">۵۰۰,۰۰۰</p>
+                                <p class="text-xs text-on-surface-variant">تومان</p>
+                            </div>
+                        </div>
+                        <div class="service-card">
+                            <div class="service-icon">
+                                <span class="material-symbols-outlined">call</span>
+                            </div>
+                            <div class="service-info">
+                                <h3 class="font-bold">مشاوره تلفنی</h3>
+                                <p class="text-xs text-on-surface-variant">۱۵ دقیقه مکالمه</p>
+                            </div>
+                            <div class="service-price">
+                                <p class="font-bold text-sm">۳۰۰,۰۰۰</p>
+                                <p class="text-xs text-on-surface-variant">تومان</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="profile-sidebar-content">
+                <!-- Office -->
+                <section class="content-block">
+                    <h2 class="block-title">
+                        <span class="material-symbols-outlined">apartment</span>
+                        اطلاعات دفتر
+                    </h2>
+                    <div style="background: #f1f5f9; height: 160px; border-radius: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtiHlnpPZzE-ArpM7PGR7s6BY8fyMWXIU4RLoYDgS7lq1902lvYJnW3fEnR0axCa9KxXtl3frQqiTdM9Z3Zq0ARifuq_01NPLO_BRV13pWS1ieujT6LG4eoFp4zU7MIBDZusObZ6dd1cd0tFv4iT-P8qDdL7fGudEIRbnEEjZYqadaG6j5c_1Tz1T9S2AL9fJ5b0PNN6fai6hKcz9-ENqFKOYFlVk-KdfMf3VQcb4f89Kvxle_gg8TSrEn7hCtp3qVKhXIo8K5GrI" alt="نقشه" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.6;">
+                    </div>
+                    <p class="text-sm text-on-surface-variant" style="line-height: 2;">
+                        تهران، سعادت‌آباد، بالاتر از میدان کاج، نبش خیابان نهم، ساختمان آریا، طبقه ۴، واحد ۱۲
+                    </p>
+                </section>
+
+                <!-- Documents -->
+                <div style="background: #ffffff; padding: 2rem; border-radius: 1.5rem; text-align: center; box-shadow: var(--shadow-sm); border: 1px solid var(--surface-variant);">
+                    <span class="material-symbols-outlined" style="color: #f59e0b; font-size: 3rem; margin-bottom: 1rem; font-variation-settings: 'FILL' 1;">military_tech</span>
+                    <h4 class="font-bold">گواهی اعتبار وکالت</h4>
+                    <p class="text-xs text-on-surface-variant" style="margin-top: 0.5rem; line-height: 1.6;">این وکیل دارای پروانه معتبر از کانون وکلای دادگستری مرکز بوده و هویت ایشان احراز شده است.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Similar Lawyers -->
+        <section style="margin-top: 5rem; padding-bottom: 5rem;">
+            <div class="section-header">
+                <h2 class="profile-name" style="font-size: 1.75rem;">وکلای مشابه و پیشنهادی</h2>
+                <a class="text-primary font-bold text-sm" href="#">
+                    مشاهده همه
+                    <span class="material-symbols-outlined text-lg">chevron_left</span>
+                </a>
+            </div>
+            
+            <div class="lawyer-grid">
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrEyQSLNXfPNHziHO4Koq1X8uicPHizsGyPSc2OHn9kTcY1ZGi13DTILjGcDBbIWmvgWpSMJl04wP8LDPt6KKlrz3SKdjZZGg4d_nEg2g3GMyTIxwaLJsqVEhSLh87br0vtcpnGiFzcQ-DpHc1POfwHRk6SPotLn7aJmHhKXkxjnQYCuYNXis-bYllJxRU9qJUkghKz6T-RSEUyvGOU-Riw79yHJFHRtZ3XFyWaKTIGo-S8AWIaWUnsTE-_L6X-OjUz43UiyO6wUY" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">دکتر مریم شایان</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص امور خانواده</p>
+                        <p class="text-secondary font-bold text-xs mb-6">تهران</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLFqUB8iZJ1_mYBmvEQ9d44z9pKMUXhJshiIDBZBVzsZxrqB-nItLtQsbj9XqNMBCqqP4MybjMIePed--eOrtOM2qdtuecA4I2VUSOMCCpnLYDcojrDwmS_DMYL2O6hOjVrOmZmlkoRwRdNRrfQ_EDJ7f8eejhUUZx7LfviS1zgWtgC5NGElCxIWH7O8pPqgUcjgHNla9R4TsVq6Btf_jU7uDLh45YkfadBheZ8QHTZ_WkTTw8QgMPyBVU8tUEfRmh4f8Jrnwga_k" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">رضا کیانی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق کیفری</p>
+                        <p class="text-secondary font-bold text-xs mb-6">شیراز</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8Ibn3k-QalnDHgRnapJTGgMBKx1EIzlWpLqd6jg1I3GnuNiYT6RnZASgRRrr07IGUR8Dme266DTOPraJrvifotimiWJYYpm5OWDe5uEIGa6pb4DpiM2sP07_OT_GTDcWOKFrEFu3fYNI5JAGMv8uCb2sjPYkaunTa_LC0uv8shMLjovBGJtBh9T8zxNSuNSX9wQ4E0d6Inf4LHx4Q_DcNGyLljne-JaGkSM90bW9eaheCePxs0R9LF0sgqPRZsNHBEjF7Zy9bCwg" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">الهام صادقی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص دعاوی ملکی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">مشهد</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDC-4Z6E-r-6-I-k-8U-7-j-V-0-i-7-L-6-0-y-m-Q-x-Z-J-8-v-4-M-2-x-n-5-9-m-6-d-6-0-q-0-0-0-0" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">علیرضا فرهمند</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص دعاوی ملکی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">کرج</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Unique profile data based on URL param (?id=...)
+        const lawyers = [
+            {
+                id: 1,
+                name: 'جولین استرلینگ',
+                tags: ['متخصص حقوق بین‌الملل و تجارت', 'قراردادهای خارجی', 'پایه یک دادگستری'],
+                location: 'تهران، ونک',
+                experience: '۱۲ سال تجربه موثر',
+                license: 'شماره پروانه: ۱۰۲۳۴۱',
+                price: '۶۵۰,۰۰۰ تومان',
+                bio: 'وکیل متخصص در پرونده‌های تجاری بین‌المللی، تنظیم قراردادهای خارجی و دعاوی مرتبط با بازرگانی فرامرزی.',
+                image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDX3XZA64kEVvexPD73m9w9gqoHyJXFzNgPQKH_LCvYdZUzEON_ItrKF5Qv0hWynhPTyUBZN6xHJruBFRSSbDuH7mVqeli3Bkmsy97nyIACYOE_-81_AVPJORPvV46jYntjl2nV0gpfKDKTzsCjz-_qfrmWP4MysgJvBvTg4WcksYNNsWiYLvbwOwqG79FwDFQBEAvRRhogw7IyP6WeqhiESkVc42Y88kKVUNIWS8A3fg7_SglqHKAQP6aNzsn8Ks3oUorevZxetiCw'
+            },
+            {
+                id: 2,
+                name: 'امیر پارسا',
+                tags: ['وکیل پایه یک، جرایم اقتصادی', 'دعاوی کیفری', 'پایه یک دادگستری'],
+                location: 'شیراز، معالی‌آباد',
+                experience: '۹ سال تجربه موثر',
+                license: 'شماره پروانه: ۱۲۸۹۷۰',
+                price: '۴۸۰,۰۰۰ تومان',
+                bio: 'تمرکز اصلی ایشان روی پرونده‌های جرایم اقتصادی، کلاهبرداری و دفاع تخصصی در دادسرا و دادگاه کیفری است.',
+                image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqicYIcDttNvO5ZchWm0uznrhKbk6ZnRoGedUHSQZ1pPwh6kxT0Q94Yboy7DWrKDjEyUHk1oERnuKHQxyiVgPUhqOxYYYBCmv-64OdbgVwPelKURNz0NagWT1Sit6_HUAATMk1bBnd37SomzG9RxAqnxf89CNvyo0ODsI38pdqYbsInzFkFQXbuY_ydEU7X2QOoXUD44b5kEtQTVOuYUJbZki8edE2aCRlPbgGI57UREN5DWukS6BWzNtBqOvdeeFxdsLEaoR-drDS'
+            },
+            {
+                id: 3,
+                name: 'سارا رادمان',
+                tags: ['متخصص حقوق خانواده', 'طلاق و حضانت', 'پایه یک دادگستری'],
+                location: 'مشهد، احمدآباد',
+                experience: '۱۱ سال تجربه موثر',
+                license: 'شماره پروانه: ۱۱۵۲۰۳',
+                price: '۴۲۰,۰۰۰ تومان',
+                bio: 'متخصص در پرونده‌های خانواده شامل طلاق توافقی، مهریه، نفقه و حضانت با رویکردی دقیق و راه‌حل‌محور.',
+                image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD-kr8mh0p8oTVpFmmMW8Tepi-Q6MwsGGK5ms3_JVBSNInimdeJNcOWZ0g0U-QNcOYi5knZ1HBZt0oEcIFysuQeMLsufAJNzHiCqsRwMM86enVhiNcdcr94Gj0Jj6wULUNS4iJ4dXBwQZL-Ka3PVzBsWMdgTpycWePdUbrm3gblP6BgkOczOTJuElHomwcV4no2JTydH_gqJnJKdxzgfWA-p09OIMzM3PlpYMJAtMZSy_9SvqDm0Gc1Wk73Z97gfx-gT8q77_1I3PSX'
+            }
+        ];
+
+        const params = new URLSearchParams(window.location.search);
+        const selectedId = Number(params.get('id')) || 1;
+        const selectedLawyer = lawyers.find(lawyer => lawyer.id === selectedId) || lawyers[0];
+        const profileFromCard = {
+            name: params.get('name') || selectedLawyer.name,
+            specialty: params.get('specialty') || selectedLawyer.tags[0],
+            city: params.get('city') || selectedLawyer.location.split('،')[0],
+            image: params.get('image') || selectedLawyer.image
+        };
+
+        const pageTitle = document.getElementById('profile-page-title');
+        const profileName = document.getElementById('profile-name');
+        const profileImage = document.getElementById('profile-image');
+        const profileTags = document.getElementById('profile-tags');
+        const profileLocation = document.getElementById('profile-location');
+        const profileExperience = document.getElementById('profile-experience');
+        const profileLicense = document.getElementById('profile-license');
+        const profilePrice = document.getElementById('profile-price');
+        const profileBio = document.getElementById('profile-bio');
+
+        pageTitle.textContent = `پروفایل ${profileFromCard.name} | هولوکیل`;
+        profileName.textContent = profileFromCard.name;
+        profileImage.src = profileFromCard.image;
+        profileImage.alt = profileFromCard.name;
+        profileLocation.textContent = `${profileFromCard.city}، دفتر مرکزی`;
+        profileExperience.textContent = selectedLawyer.experience;
+        profileLicense.textContent = selectedLawyer.license;
+        profilePrice.textContent = selectedLawyer.price;
+        profileBio.textContent = selectedLawyer.bio;
+        profileTags.innerHTML = `
+            <span class="tag-item">${profileFromCard.specialty}</span>
+            <span class="tag-item">${selectedLawyer.tags[1]}</span>
+            <span class="tag-item primary">${selectedLawyer.tags[2]}</span>
+        `;
+
+        // Tab Switching Logic
+        const tabs = document.querySelectorAll('#profile-tabs li');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.getAttribute('data-tab');
+
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update active content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === targetTab) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        // Calendar Interactivity
+        const daySlots = document.querySelectorAll('.day-slot');
+        daySlots.forEach(slot => {
+            slot.addEventListener('click', () => {
+                daySlots.forEach(s => s.classList.remove('active'));
+                slot.classList.add('active');
+            });
+        });
+
+        const timeItems = document.querySelectorAll('.time-item:not(.disabled)');
+        timeItems.forEach(item => {
+            item.addEventListener('click', () => {
+                timeItems.forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+            });
+        });
+
+        // Go to reservation page with unique selected data
+        const goToReservationBtn = document.getElementById('go-to-reservation-btn');
+        goToReservationBtn.addEventListener('click', () => {
+            const activeDay = document.querySelector('.day-slot.active');
+            const selectedTime = document.querySelector('.time-item.selected');
+            const currentSpecialty = document.querySelector('#profile-tags .tag-item')?.textContent?.trim() || profileFromCard.specialty;
+
+            const dayParts = activeDay ? Array.from(activeDay.querySelectorAll('span')).map(s => s.textContent.trim()) : ['امروز', '۲۰', 'فروردین'];
+            const selectedDate = `${dayParts[0]} ${dayParts[1]} ${dayParts[2]}`;
+            const selectedTimeText = selectedTime ? selectedTime.textContent.trim() : '۰۹:۳۰';
+
+            const reservationParams = new URLSearchParams({
+                id: String(selectedId),
+                name: profileFromCard.name,
+                specialty: currentSpecialty,
+                city: profileFromCard.city,
+                image: profileFromCard.image,
+                price: selectedLawyer.price,
+                service: 'مشاوره حضوری',
+                date: selectedDate,
+                time: selectedTimeText
+            });
+
+            window.location.href = `rezerv.html?${reservationParams.toString()}`;
+        });
+    </script>
+</body>
+</html>

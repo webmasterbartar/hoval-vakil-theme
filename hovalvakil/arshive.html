@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>هولوکیل | آرشیو وکلا</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="archive-page text-on-surface">
+    <main class="archive-main container">
+        <section class="archive-search-card">
+            <div class="archive-search-grid">
+                <div class="archive-field"><span class="material-symbols-outlined">location_on</span><input type="text" placeholder="نام شهر"/></div>
+                <div class="archive-field"><span class="material-symbols-outlined">gavel</span><input type="text" placeholder="تخصص"/></div>
+                <div class="archive-field"><span class="material-symbols-outlined">person_search</span><input type="text" placeholder="نام وکیل"/></div>
+                <button class="archive-search-btn"><span class="material-symbols-outlined">search</span>جستجو</button>
+            </div>
+            <p class="archive-result-count">۵۲۳ وکیل یافت شد</p>
+        </section>
+
+        <section class="archive-layout">
+            <aside id="archive-filters-panel" class="archive-filters">
+                <div class="archive-panel">
+                    <div class="archive-panel-head">
+                        <h2><span class="material-symbols-outlined">tune</span>فیلترها</h2>
+                        <div class="archive-panel-head-actions">
+                            <button type="button">پاک کردن همه</button>
+                            <button id="archive-filters-close" class="archive-filters-close-btn" type="button" aria-label="بستن فیلترها">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="archive-filter-group">
+                        <h3>تخصص</h3>
+                        <label><input type="checkbox"/> کیفری</label>
+                        <label><input type="checkbox"/> خانواده</label>
+                        <label><input type="checkbox"/> ملکی</label>
+                        <label><input type="checkbox"/> تجاری</label>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="archive-results">
+                <div class="archive-sort-row">
+                    <span>مرتب‌سازی بر اساس:</span>
+                    <select>
+                        <option>امتیاز</option>
+                        <option>تجربه</option>
+                    </select>
+                </div>
+
+                <article class="archive-lawyer-card">
+                    <div class="archive-lawyer-main">
+                        <img class="archive-lawyer-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUotcQUXrEMVxaS3Z5yJeo0eWdLWFeKXFB1EAtgfYbTABmmLIkw5BY4TUv2ZQpytgW1QLXxUmlKCaotyWJ1NX70aghlx-LcSZnoShuWcXA34pEeCokb6-pkktj7CxJKn1wsRsiPhFMfeeBZBvO26fcqDY9TWrunyvfrq5m5EZDN9y1j3oGOdLJQ9__VRIz0e1GtBY2hkJfNt7Zb4EzPZImEaMJL2wVrumSLCxOdPG1mo8Gk7QN4GPe6eIu7G0PkDMdULiPVR2QJDQ" alt="وکیل"/>
+                        <div class="archive-lawyer-content">
+                            <div class="archive-lawyer-title-row">
+                                <h3>دکتر علیرضا افشار</h3>
+                                <span class="material-symbols-outlined archive-verified-icon">verified</span>
+                            </div>
+                            <p class="archive-lawyer-specialty">متخصص دعاوی ملکی و قراردادها</p>
+                            <div class="archive-lawyer-tags">
+                                <span>پایه یک دادگستری</span>
+                                <span>حضوری</span>
+                                <span>تلفنی</span>
+                            </div>
+                            <div class="archive-lawyer-meta">
+                                <p><span class="material-symbols-outlined">history_edu</span>۱۵ سال تجربه</p>
+                                <p><span class="material-symbols-outlined">location_on</span>تهران، سعادت‌آباد</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="archive-lawyer-actions">
+                        <div class="archive-lawyer-rating">
+                            <span class="material-symbols-outlined">star</span>
+                            <strong>۴.۹</strong>
+                            <small>(۱۲۴ نظر)</small>
+                        </div>
+                        <p>از ۵۰۰,۰۰۰ تومان</p>
+                        <div class="archive-lawyer-cta">
+                            <a href="rezerv.html?id=1" class="archive-btn-secondary">رزرو نوبت</a>
+                            <a href="profil.html?id=1" class="btn-primary-sm">مشاهده پروفایل</a>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <button id="archive-filters-fab" class="archive-filters-fab" type="button" aria-label="باز کردن فیلترها">
+        <span class="material-symbols-outlined">tune</span>
+        <span>فیلترها</span>
+    </button>
+
+    <div id="archive-filters-backdrop" class="archive-filters-backdrop"></div>
+
+    <script>
+        const filtersFab = document.getElementById('archive-filters-fab');
+        const filtersCloseBtn = document.getElementById('archive-filters-close');
+        const filtersPanel = document.getElementById('archive-filters-panel');
+        const filtersBackdrop = document.getElementById('archive-filters-backdrop');
+
+        function closeFiltersOffcanvas() {
+            filtersPanel.classList.remove('is-open');
+            filtersBackdrop.classList.remove('is-open');
+            document.body.classList.remove('archive-offcanvas-open');
+        }
+
+        function openFiltersOffcanvas() {
+            filtersPanel.classList.add('is-open');
+            filtersBackdrop.classList.add('is-open');
+            document.body.classList.add('archive-offcanvas-open');
+        }
+
+        filtersFab?.addEventListener('click', openFiltersOffcanvas);
+        filtersBackdrop?.addEventListener('click', closeFiltersOffcanvas);
+        filtersCloseBtn?.addEventListener('click', closeFiltersOffcanvas);
+
+        const clearFiltersBtn = filtersPanel?.querySelector('.archive-panel-head button');
+        clearFiltersBtn?.addEventListener('click', closeFiltersOffcanvas);
+    </script>
+</body>
+</html>
