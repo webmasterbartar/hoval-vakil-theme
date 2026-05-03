@@ -296,7 +296,10 @@ function hovalvakil_seed_demo_data_once() {
 		update_post_meta( $post_id, 'hvl_office_address', $office_city . '، ' . $office_district . '، خیابان نمونه، پلاک ' . ( 10 + $index ) );
 		update_post_meta( $post_id, 'hvl_office_phone', '۰۲۱-' . (string) ( 10000000 + ( $index * 731 ) ) );
 		update_post_meta( $post_id, 'hvl_office_working_hours', 'شنبه تا چهارشنبه ۹:۰۰ تا ۱۸:۰۰' );
-		update_post_meta( $post_id, 'hvl_office_map_image', 'https://via.placeholder.com/900x360.png?text=%D9%86%D9%82%D8%B4%D9%87+' . rawurlencode( $office_city ) );
+		$map_placeholder = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+			? hovalvakil_theme_lawyer_placeholder_url()
+			: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+		update_post_meta( $post_id, 'hvl_office_map_image', $map_placeholder );
 	}
 
 	update_option( 'hovalvakil_seed_version', $seed_version );

@@ -328,7 +328,9 @@ function hovalvakil_rest_get_centers( WP_REST_Request $request ) {
 		$city_slug  = is_array( $city_terms ) && ! empty( $city_terms ) ? (string) $city_terms[0]->slug : '';
 
 		if ( ! $image ) {
-			$image = 'https://via.placeholder.com/900x600.png?text=%D9%85%D8%B1%DA%A9%D8%B2+%D8%AD%D9%82%D9%88%D9%82%DB%8C';
+			$image = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+				? hovalvakil_theme_lawyer_placeholder_url()
+				: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
 		}
 
 		$items[] = [
@@ -553,23 +555,17 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			? hovalvakil_lawyer_profile_image_url( $post_id, 'medium' )
 			: (string) get_the_post_thumbnail_url( $post_id, 'medium' );
 		if ( ! $img ) {
-			$img = 'https://via.placeholder.com/600x600.png?text=%D9%88%DA%A9%DB%8C%D9%84';
+			$img = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+				? hovalvakil_theme_lawyer_placeholder_url()
+				: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
 		}
 
-		$spec_terms  = get_the_terms( $post_id, 'hvl_specialty' );
 		$city_terms  = get_the_terms( $post_id, 'hvl_city' );
 		$prov_terms  = get_the_terms( $post_id, 'hvl_province' );
 
-		$spec_names = [];
-		if ( is_array( $spec_terms ) && ! empty( $spec_terms ) ) {
-			foreach ( $spec_terms as $t ) {
-				if ( isset( $t->name ) && '' !== $t->name ) {
-					$spec_names[] = $t->name;
-				}
-			}
-			$spec_names = array_values( array_unique( $spec_names ) );
-			sort( $spec_names, SORT_STRING );
-		}
+		$spec_names = function_exists( 'hovalvakil_lawyer_card_specialty_labels' )
+			? hovalvakil_lawyer_card_specialty_labels( $post_id )
+			: [];
 		$primary_specialty = ! empty( $spec_names ) ? $spec_names[0] : '';
 
 		$province_name = is_array( $prov_terms ) && ! empty( $prov_terms ) ? (string) $prov_terms[0]->name : '';
@@ -583,10 +579,12 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		$lic_exp_disp  = function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
 			? hovalvakil_lawyer_format_license_expires_display( $lic_exp_raw )
 			: '';
-		$location_line = implode(
-			'، ',
-			array_filter( [ $province_name, $city_name ] )
-		);
+		$location_line = function_exists( 'hovalvakil_lawyer_card_location_line' )
+			? hovalvakil_lawyer_card_location_line( $post_id )
+			: implode( '، ', array_filter( [ $province_name, $city_name ] ) );
+		$card_license_line = function_exists( 'hovalvakil_lawyer_card_license_line' )
+			? hovalvakil_lawyer_card_license_line( $post_id )
+			: '';
 
 		$items[] = [
 			'id'         => $post_id,
@@ -598,6 +596,7 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			'city'       => $city_name,
 			'province'   => $province_name,
 			'location_line' => $location_line,
+			'card_license_line' => $card_license_line,
 			'lawyer_grade' => $lawyer_grade,
 			'license_issued' => $lic_issued_raw,
 			'license_issued_display' => $lic_issued_disp,
@@ -842,7 +841,9 @@ function hovalvakil_rest_get_lawyer_by_id( WP_REST_Request $request ) {
 		? hovalvakil_lawyer_profile_image_url( $lawyer_id, 'large' )
 		: (string) get_the_post_thumbnail_url( $lawyer_id, 'large' );
 	if ( ! $image ) {
-		$image = 'https://via.placeholder.com/600x600.png?text=%D9%88%DA%A9%DB%8C%D9%84';
+		$image = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+			? hovalvakil_theme_lawyer_placeholder_url()
+			: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
 	}
 
 	$spec_terms  = get_the_terms( $lawyer_id, 'hvl_specialty' );

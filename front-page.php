@@ -37,7 +37,9 @@ if ( ! function_exists( 'hovalvakil_to_fa_digits' ) ) {
 }
 
 $archive_url  = get_post_type_archive_link( 'hvl_lawyer' );
-$profile_fallback_image = 'https://via.placeholder.com/600x600.png?text=%D9%88%DA%A9%DB%8C%D9%84';
+$profile_fallback_image = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+	? hovalvakil_theme_lawyer_placeholder_url()
+	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
 $home_specialties = get_terms(
 	[
 		'taxonomy'   => 'hvl_specialty',
@@ -108,7 +110,7 @@ $initial_query = new WP_Query(
 		'post_status'            => 'publish',
 		'posts_per_page'         => 16,
 		'no_found_rows'          => false,
-		'update_post_meta_cache' => false,
+		'update_post_meta_cache' => true,
 		'update_post_term_cache' => true,
 	]
 );
@@ -157,19 +159,15 @@ get_header();
 						$img          = function_exists( 'hovalvakil_lawyer_profile_image_url' )
 							? hovalvakil_lawyer_profile_image_url( $post_id, 'medium' )
 							: (string) get_the_post_thumbnail_url( $post_id, 'medium' );
-						$specialties  = get_the_terms( $post_id, 'hvl_specialty' );
-						$cities       = get_the_terms( $post_id, 'hvl_city' );
-						$spec_names   = [];
-						if ( is_array( $specialties ) && ! empty( $specialties ) ) {
-							foreach ( $specialties as $t ) {
-								if ( isset( $t->name ) && '' !== $t->name ) {
-									$spec_names[] = $t->name;
-								}
-							}
-							$spec_names = array_values( array_unique( $spec_names ) );
-							sort( $spec_names, SORT_STRING );
-						}
-						$city = is_array( $cities ) && ! empty( $cities ) ? $cities[0]->name : '';
+						$spec_names   = function_exists( 'hovalvakil_lawyer_card_specialty_labels' )
+							? hovalvakil_lawyer_card_specialty_labels( $post_id )
+							: [];
+						$location_line = function_exists( 'hovalvakil_lawyer_card_location_line' )
+							? hovalvakil_lawyer_card_location_line( $post_id )
+							: '';
+						$license_line  = function_exists( 'hovalvakil_lawyer_card_license_line' )
+							? hovalvakil_lawyer_card_license_line( $post_id )
+							: '';
 						?>
 						<a href="<?php the_permalink(); ?>" class="lawyer-card lawyer-card--link ghost-border editorial-shadow">
 							<div class="lawyer-card-image-wrapper">
@@ -183,10 +181,13 @@ get_header();
 											<span class="lawyer-card-specialty-tag"><?php echo esc_html( $spec_label ); ?></span>
 										<?php endforeach; ?>
 									</div>
-								<?php else : ?>
-									<p class="lawyer-card-specialties-placeholder text-on-surface-variant text-sm">—</p>
 								<?php endif; ?>
-								<p class="text-secondary font-bold text-xs lawyer-card-city-line"><?php echo esc_html( $city ? $city : '—' ); ?></p>
+								<?php if ( '' !== $location_line ) : ?>
+									<p class="text-secondary font-bold text-xs lawyer-card-city-line"><?php echo esc_html( $location_line ); ?></p>
+								<?php endif; ?>
+								<?php if ( '' !== $license_line ) : ?>
+									<p class="text-on-surface-variant text-xs lawyer-card-license-line"><?php echo esc_html( $license_line ); ?></p>
+								<?php endif; ?>
 								<span class="btn-primary-full">مشاهده پروفایل</span>
 							</div>
 						</a>
@@ -270,7 +271,7 @@ get_header();
 		const apiBase = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/lawyers' ) ) ); ?>;
 		const specialtyApi = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/specialties' ) ) ); ?>;
 		const archiveUrl = <?php echo wp_json_encode( esc_url_raw( $archive_url ) ); ?>;
-		const fallbackImage = 'https://via.placeholder.com/600x600.png?text=%D9%88%DA%A9%DB%8C%D9%84';
+		const fallbackImage = <?php echo wp_json_encode( esc_url_raw( $profile_fallback_image ) ); ?>;
 		const initialTotalPages = <?php echo (int) $initial_total_pages; ?>;
 
 		const gridEl = document.getElementById('home-lawyer-grid');
@@ -310,10 +311,15 @@ get_header();
 				? item.specialties
 				: (item.specialty ? [item.specialty] : []);
 			if (!names.length) {
-				return '<p class="lawyer-card-specialties-placeholder text-on-surface-variant text-sm">—</p>';
+				return '';
 			}
 			const tags = names.map((n) => `<span class="lawyer-card-specialty-tag">${escapeHtml(n)}</span>`).join('');
 			return `<div class="lawyer-card-specialties">${tags}</div>`;
+		}
+
+		function cardLocationText(item) {
+			const loc = (item.location_line || item.city || '').toString().trim();
+			return loc;
 		}
 
 		function skeletonCardHtml() {
@@ -367,7 +373,16 @@ get_header();
 				gridEl.innerHTML = '<p class="text-on-surface-variant">موردی یافت نشد.</p>';
 				return;
 			}
-			const html = items.map((item) => `
+			const html = items.map((item) => {
+				const loc = cardLocationText(item);
+				const lic = (item.card_license_line || '').toString().trim();
+				const locHtml = loc
+					? `<p class="text-secondary font-bold text-xs lawyer-card-city-line">${escapeHtml(loc)}</p>`
+					: '';
+				const licHtml = lic
+					? `<p class="text-on-surface-variant text-xs lawyer-card-license-line">${escapeHtml(lic)}</p>`
+					: '';
+				return `
 				<a href="${escapeHtml(item.permalink || '#')}" class="lawyer-card lawyer-card--link ghost-border editorial-shadow">
 					<div class="lawyer-card-image-wrapper">
 						<img class="lawyer-card-image" src="${escapeHtml(item.image || fallbackImage)}" alt="${escapeHtml(item.name || '')}" />
@@ -375,11 +390,12 @@ get_header();
 					<div class="lawyer-card-content">
 						<h3 class="lawyer-name">${escapeHtml(item.name || '')}</h3>
 						${specialtiesMarkup(item)}
-						<p class="text-secondary font-bold text-xs lawyer-card-city-line">${escapeHtml(item.city || '—')}</p>
+						${locHtml}
+						${licHtml}
 						<span class="btn-primary-full">مشاهده پروفایل</span>
 					</div>
-				</a>
-			`).join('');
+				</a>`;
+			}).join('');
 			gridEl.insertAdjacentHTML('beforeend', html);
 		}
 
@@ -502,7 +518,9 @@ get_header();
 			const specialty = normalizeFaText(
 				(Array.isArray(item?.specialties) && item.specialties.length ? item.specialties.join(' ') : '') || item?.specialty || ''
 			);
-			const city = normalizeFaText(item?.city || '');
+			const city = normalizeFaText(
+				(item?.location_line || item?.city || '').toString()
+			);
 			let score = 0;
 			if (name === q) score += 1000;
 			else if (name.startsWith(q)) score += 700;
@@ -522,23 +540,26 @@ get_header();
 				return;
 			}
 
-			const rows = items.map((item) => `
+			const rows = items.map((item) => {
+				const spec0 = (Array.isArray(item.specialties) && item.specialties.length
+					? item.specialties[0]
+					: '') || (item.specialty || '');
+				const loc = cardLocationText(item);
+				const lic = (item.card_license_line || '').toString().trim();
+				const bits = [ spec0, loc, lic ].filter((x) => String(x).trim());
+				const metaLine = bits.join(' · ');
+				const metaHtml = metaLine
+					? `<div class="home-live-item-meta">${escapeHtml(metaLine)}</div>`
+					: '';
+				return `
 				<a class="home-live-item" href="${escapeHtml(item.permalink || '#')}">
 					<img class="home-live-item-image" src="${escapeHtml(item.image || fallbackImage)}" alt="${escapeHtml(item.name || '')}" />
 					<div class="home-live-item-content">
 						<div class="home-live-item-title">${escapeHtml(item.name || '')}</div>
-						<div class="home-live-item-meta">
-							<span>${escapeHtml(item.specialty || '—')}</span>
-							<span>•</span>
-							<span>${escapeHtml(item.city || '—')}</span>
-							<span>•</span>
-							<span>${escapeHtml(item.experience || '—')}</span>
-							<span>•</span>
-							<span>${escapeHtml(item.price_from || '—')}</span>
-						</div>
+						${metaHtml}
 					</div>
-				</a>
-			`).join('');
+				</a>`;
+			}).join('');
 
 			const footer = `
 				<a class="home-live-all" href="${escapeHtml(archiveUrlWithFilters())}">

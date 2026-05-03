@@ -467,7 +467,9 @@ get_header();
 						? hovalvakil_lawyer_profile_image_url( get_the_ID(), 'medium' )
 						: (string) get_the_post_thumbnail_url( get_the_ID(), 'medium' );
 					if ( ! $avatar_url ) {
-						$avatar_url = 'https://via.placeholder.com/160x160.png?text=%D9%88%DA%A9%DB%8C%D9%84';
+						$avatar_url = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+							? hovalvakil_theme_lawyer_placeholder_url()
+							: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
 					}
 
 					$specialty_term = null;

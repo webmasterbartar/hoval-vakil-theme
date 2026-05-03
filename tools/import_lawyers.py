@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-import html
 import json
 import logging
 import re
@@ -225,7 +224,6 @@ def record_to_payload(
     pid = public_lawyer_id(rec, rid)
     title = (rec.get("full_name") or "").strip()
     ext_id = external_id_for(rec, rid)
-    slug = f"lawyer-{pid}"
 
     issue_raw = (rec.get("issue_date") or "").strip()
     valid_raw = (rec.get("validity_date") or "").strip()
@@ -233,92 +231,22 @@ def record_to_payload(
     lic_exp = jalali_to_iso_date(valid_raw) if valid_raw else ""
 
     mobile, office_mobile, office_phone = phones_from_record(rec)
-    contact = (rec.get("contact") or "").strip()
+    if office_mobile and re.sub(r"\s+", "", office_mobile) == re.sub(r"\s+", "", mobile or ""):
+        office_mobile = ""
 
     city = (rec.get("city") or "").strip()
     province = (rec.get("province") or "").strip()
-    province_city = (rec.get("province_city") or "").strip()
     grade = (rec.get("lawyer_level") or rec.get("grade") or "").strip()
-    grade_raw = (rec.get("lawyer_level_raw") or "").strip()
-    spec = (rec.get("specialty") or "").strip()
-    if spec and grade and spec != grade:
-        services_line = f"{spec} — {grade}"
-    elif spec:
-        services_line = spec
-    else:
-        services_line = grade
-
-    records_parts: List[str] = []
-    if rec.get("bar_association"):
-        records_parts.append(str(rec["bar_association"]).strip())
-    if province_city:
-        records_parts.append("استان / شهر (متن منبع): " + province_city)
-    if contact:
-        records_parts.append("رشتهٔ تماس (منبع): " + contact)
-    if rec.get("profile_url"):
-        records_parts.append("لینک پروفایل منبع: " + str(rec["profile_url"]).strip())
-    if rec.get("source"):
-        records_parts.append("source: " + str(rec["source"]).strip())
-    if rec.get("last_update"):
-        records_parts.append("last_update (منبع): " + str(rec["last_update"]).strip())
-    records_parts.append("شناسهٔ public_lawyer_id (منبع): " + pid)
-    if grade_raw and grade_raw != grade:
-        records_parts.append("lawyer_level_raw (منبع): " + grade_raw)
-    hub_status = (rec.get("status") or "").strip()
-    if hub_status:
-        records_parts.append("وضعیت در منبع (فیلد status): " + hub_status)
-    if issue_raw:
-        records_parts.append("تاریخ صدور پروانه (شمسی، منبع): " + issue_raw)
-    if valid_raw:
-        records_parts.append("تاریخ اعتبار پروانه (شمسی، منبع): " + valid_raw)
-    if lic_issued:
-        records_parts.append("تاریخ صدور (میلادی ذخیره‌شده در متای سایت): " + lic_issued)
-    if lic_exp:
-        records_parts.append("تاریخ اعتبار (میلادی ذخیره‌شده در متای سایت): " + lic_exp)
-    img_st = (rec.get("image_status") or "").strip()
-    records_parts.append("وضعیت تصویر در scrape: " + (img_st or "—"))
-    if rec.get("image_error"):
-        records_parts.append("image_error (فیلد خام scrape): " + str(rec["image_error"]).strip())
-    if img_st == "ok" and rec.get("image_sha256"):
-        extra = []
-        if rec.get("image_width") and rec.get("image_height"):
-            extra.append(f"{rec['image_width']}×{rec['image_height']} px")
-        if rec.get("image_bytes"):
-            extra.append(f"{rec['image_bytes']} bytes")
-        tail = ("؛ " + "، ".join(extra)) if extra else ""
-        records_parts.append("SHA256 فایل profile.webp در scrape: " + str(rec["image_sha256"]) + tail)
-    if img_st == "ok" and rec.get("image_folder"):
-        records_parts.append("مسیر پوشهٔ تصویر (نسبت به images/): " + str(rec["image_folder"]).strip())
 
     verified_url = ""
     if use_sideload_url or include_remote_url_for_meta:
         verified_url = verified_featured_image_url(data_dir, rec, image_host)
 
-    def he(s: Any) -> str:
-        return html.escape((str(s) if s is not None else "").strip())
-
-    content_lines = [
-        "<dl class=\"hvl-import-source\">",
-        f"<dt>استان</dt><dd>{he(province) or '—'}</dd>",
-        f"<dt>شهر</dt><dd>{he(city) or '—'}</dd>",
-        f"<dt>استان / شهر (متن منبع)</dt><dd>{he(province_city) or '—'}</dd>",
-        f"<dt>آدرس دفتر</dt><dd>{he(rec.get('office_address')) or '—'}</dd>",
-        f"<dt>تماس (متن خام منبع)</dt><dd>{he(contact) or '—'}</dd>",
-        f"<dt>موبایل (استخراج/فیلد)</dt><dd>{he(mobile) or '—'}</dd>",
-        f"<dt>موبایل دفتر دوم (در صورت وجود در خط تماس)</dt><dd>{he(office_mobile) or '—'}</dd>",
-        f"<dt>تلفن دفتر</dt><dd>{he(office_phone) or '—'}</dd>",
-        f"<dt>پایه / تخصص در منبع</dt><dd>{he(spec)} / {he(grade)}</dd>",
-        f"<dt>کانون (منبع)</dt><dd>{he(rec.get('bar_association')) or '—'}</dd>",
-        f"<dt>لینک منبع</dt><dd><a href=\"{he(rec.get('profile_url'))}\" rel=\"nofollow noopener\">{he(rec.get('profile_url'))}</a></dd>" if rec.get("profile_url") else "<dt>لینک منبع</dt><dd>—</dd>",
-        "</dl>",
-    ]
-
     item: Dict[str, Any] = {
         "external_id": ext_id,
         "title": title,
-        "slug": slug,
-        "content": "\n".join(content_lines),
-        "excerpt": ((rec.get("office_address") or "").strip() + " | " + contact)[:400],
+        "content": "",
+        "excerpt": "",
         "status": "publish",
         "city": city,
         "province": province,
@@ -338,17 +266,10 @@ def record_to_payload(
         item["hvl_license_issued"] = lic_issued
     if lic_exp:
         item["hvl_license_expires"] = lic_exp
-    lic_bits = []
-    if rec.get("license_no"):
-        lic_bits.append("شماره پروانه: " + str(rec["license_no"]).strip())
     if issue_raw:
-        lic_bits.append("صدور (شمسی، منبع): " + issue_raw)
+        item["hvl_license_issued_jalali"] = issue_raw
     if valid_raw:
-        lic_bits.append("اعتبار (شمسی، منبع): " + valid_raw)
-    if lic_issued or lic_exp:
-        lic_bits.append("ذخیرهٔ میلادی در سایت: " + " / ".join(x for x in [lic_issued or "—", lic_exp or "—"] if x))
-    if lic_bits:
-        item["hvl_license"] = " | ".join(lic_bits)
+        item["hvl_license_expires_jalali"] = valid_raw
     if grade:
         item["hvl_lawyer_grade"] = grade
     if mobile:
@@ -360,10 +281,6 @@ def record_to_payload(
     addr = (rec.get("office_address") or "").strip()
     if addr:
         item["hvl_office_address"] = addr
-    if services_line:
-        item["hvl_services"] = services_line
-    if records_parts:
-        item["hvl_records"] = "\n".join(records_parts)
 
     return item
 

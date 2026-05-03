@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Meta keys used on hvl_lawyer (single source for importers).
+ * Meta keys used on hvl_lawyer (canonical list for import/sync tools).
  *
  * @return string[]
  */
@@ -30,6 +30,8 @@ function hovalvakil_lawyer_meta_key_list() {
 		'hvl_license_no',
 		'hvl_license_issued',
 		'hvl_license_expires',
+		'hvl_license_issued_jalali',
+		'hvl_license_expires_jalali',
 		'hvl_lawyer_grade',
 		'hvl_license_file_url',
 		'hvl_experience',
@@ -64,6 +66,8 @@ function hovalvakil_lawyer_profile_meta_rows() {
 		'hvl_license_no'         => [ 'label' => 'شماره پروانه', 'type' => 'text', 'hint' => '' ],
 		'hvl_license_issued'     => [ 'label' => 'تاریخ صدور پروانه', 'type' => 'date', 'hint' => 'قالب YYYY-MM-DD؛ برای پروانهٔ کسب / وکالت.' ],
 		'hvl_license_expires'    => [ 'label' => 'تاریخ انقضای پروانه', 'type' => 'date', 'hint' => 'قالب YYYY-MM-DD برای مرتب‌سازی و درون‌ریزی؛ در سایت با تقویم محلی نمایش داده می‌شود.' ],
+		'hvl_license_issued_jalali'  => [ 'label' => 'تاریخ صدور (شمسی، نمایش)', 'type' => 'text', 'hint' => 'مثال ۱۳۹۴/۱۲/۱۲؛ در صورت پر بودن در سایت به‌جای تاریخ میلادی نمایش داده می‌شود.' ],
+		'hvl_license_expires_jalali' => [ 'label' => 'تاریخ انقضا (شمسی، نمایش)', 'type' => 'text', 'hint' => 'مثال ۱۴۰۵/۰۹/۳۰' ],
 		'hvl_license_file_url'   => [ 'label' => 'آدرس فایل پروانه (URL)', 'type' => 'url', 'hint' => 'PDF یا تصویر روی سرور یا CDN' ],
 		'hvl_license'            => [ 'label' => 'توضیح آزاد پروانه (قدیمی)', 'type' => 'text', 'hint' => 'در صورت خالی بودن شماره پروانه، برای نمایش ترکیبی استفاده می‌شود.' ],
 		'hvl_section_profile'    => [ 'label' => '— پروفایل نمایشی —', 'type' => 'section', 'hint' => '' ],
@@ -166,4 +170,102 @@ function hovalvakil_lawyer_profile_image_url( $post_id, $size = 'medium' ) {
 	}
 	$url = (string) get_post_meta( $post_id, 'hvl_photo_url', true );
 	return '' !== $url ? $url : '';
+}
+
+/**
+ * Theme-hosted placeholder when no profile image (avoids external placeholder CDNs).
+ *
+ * @return string Absolute URL (not HTML-escaped).
+ */
+function hovalvakil_theme_lawyer_placeholder_url() {
+	return HELLO_THEME_IMAGES_URL . 'lawyer-placeholder.svg';
+}
+
+/**
+ * ASCII digits to Persian digits for short UI strings.
+ *
+ * @param string $value Input.
+ * @return string
+ */
+function hovalvakil_lawyer_digits_to_fa( $value ) {
+	return strtr(
+		(string) $value,
+		[
+			'0' => '۰',
+			'1' => '۱',
+			'2' => '۲',
+			'3' => '۳',
+			'4' => '۴',
+			'5' => '۵',
+			'6' => '۶',
+			'7' => '۷',
+			'8' => '۸',
+			'9' => '۹',
+		]
+	);
+}
+
+/**
+ * Taxonomy specialty names for cards; if none, single tag from پایهٔ وکالت meta.
+ *
+ * @param int $post_id Post ID.
+ * @return string[]
+ */
+function hovalvakil_lawyer_card_specialty_labels( $post_id ) {
+	$post_id = (int) $post_id;
+	$labels  = [];
+	$terms   = get_the_terms( $post_id, 'hvl_specialty' );
+	if ( is_array( $terms ) ) {
+		foreach ( $terms as $t ) {
+			if ( isset( $t->name ) && '' !== $t->name ) {
+				$labels[] = $t->name;
+			}
+		}
+		$labels = array_values( array_unique( $labels ) );
+		sort( $labels, SORT_STRING );
+	}
+	if ( ! empty( $labels ) ) {
+		return $labels;
+	}
+	$grade = trim( (string) get_post_meta( $post_id, 'hvl_lawyer_grade', true ) );
+	return '' !== $grade ? [ $grade ] : [];
+}
+
+/**
+ * یک خط موقعیت برای کارت: استان و شهر از تاکسونومی؛ در غیر این صورت خلاصهٔ آدرس دفتر.
+ *
+ * @param int $post_id Post ID.
+ * @return string
+ */
+function hovalvakil_lawyer_card_location_line( $post_id ) {
+	$post_id = (int) $post_id;
+	$prov    = function_exists( 'hovalvakil_lawyer_get_province_name' ) ? hovalvakil_lawyer_get_province_name( $post_id ) : '';
+	$city    = '';
+	$ct      = get_the_terms( $post_id, 'hvl_city' );
+	if ( is_array( $ct ) && ! empty( $ct ) ) {
+		$city = (string) $ct[0]->name;
+	}
+	$line = implode( '، ', array_filter( [ $prov, $city ] ) );
+	if ( '' !== $line ) {
+		return $line;
+	}
+	$addr = trim( (string) get_post_meta( $post_id, 'hvl_office_address', true ) );
+	if ( '' === $addr ) {
+		return '';
+	}
+	return wp_trim_words( $addr, 14, '…' );
+}
+
+/**
+ * خط فرعی کارت (شمارهٔ پروانه) در صورت وجود در متا.
+ *
+ * @param int $post_id Post ID.
+ * @return string
+ */
+function hovalvakil_lawyer_card_license_line( $post_id ) {
+	$no = trim( (string) get_post_meta( (int) $post_id, 'hvl_license_no', true ) );
+	if ( '' === $no ) {
+		return '';
+	}
+	return 'شمارهٔ پروانه ' . hovalvakil_lawyer_digits_to_fa( $no );
 }

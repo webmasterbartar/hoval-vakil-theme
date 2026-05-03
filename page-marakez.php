@@ -142,7 +142,7 @@ get_header();
 						$archive_link = $city_slug ? add_query_arg( [ 'city_term[]' => $city_slug ], $archive_url ) : $archive_url;
 						?>
 						<article class="marakez-card">
-							<img src="<?php echo esc_url( $image ? $image : 'https://via.placeholder.com/900x600.png?text=%D9%85%D8%B1%DA%A9%D8%B2+%D8%AD%D9%82%D9%88%D9%82%DB%8C' ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>" />
+							<img src="<?php echo esc_url( $image ? $image : ( function_exists( 'hovalvakil_theme_lawyer_placeholder_url' ) ? hovalvakil_theme_lawyer_placeholder_url() : get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg' ) ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>" />
 							<div class="marakez-card-body">
 								<h3><?php the_title(); ?></h3>
 								<p><?php echo esc_html( wp_trim_words( get_the_excerpt() ? get_the_excerpt() : get_the_content(), 18 ) ); ?></p>

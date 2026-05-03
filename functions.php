@@ -227,6 +227,7 @@ require get_template_directory() . '/includes/hovalvakil-lawyer-fieldmap.php';
 require get_template_directory() . '/includes/hovalvakil-slug-migrate.php';
 require get_template_directory() . '/includes/hovalvakil-api.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-rest-import.php';
+require get_template_directory() . '/includes/hovalvakil-lawyer-cli.php';
 require get_template_directory() . '/includes/hovalvakil-seeder.php';
 require get_template_directory() . '/includes/hovalvakil-admin-reservations.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-meta.php';

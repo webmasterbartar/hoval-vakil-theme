@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
-$site_name = 'هولوکیل';
+$site_name = 'هوالوکیل';
 $header_phone   = (string) get_theme_mod( 'hvl_footer_phone', '۰۲۱۲۲۰۰۰۷۵۲' );
 $header_address = (string) get_theme_mod( 'hvl_footer_address', 'تهران -بلوار کاوه نرسیده به چهارراه دولت پ ۱۲' );
 $header_phone_dial = preg_replace( '/\D+/', '', $header_phone );

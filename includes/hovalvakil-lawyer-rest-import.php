@@ -324,6 +324,9 @@ function hovalvakil_rest_post_lawyers_batch( WP_REST_Request $request ) {
 
 		$external_id = isset( $raw_item['external_id'] ) ? sanitize_text_field( (string) $raw_item['external_id'] ) : '';
 		$slug_in     = isset( $raw_item['slug'] ) ? sanitize_title( (string) $raw_item['slug'] ) : '';
+		if ( '' === $slug_in && '' !== $title ) {
+			$slug_in = sanitize_title( $title );
+		}
 
 		$post_id = 0;
 		if ( '' !== $external_id ) {
@@ -364,6 +367,8 @@ function hovalvakil_rest_post_lawyers_batch( WP_REST_Request $request ) {
 			$postarr['ID'] = $post_id;
 			if ( '' === $slug_in ) {
 				unset( $postarr['post_name'] );
+			} else {
+				$postarr['post_name'] = $slug_in;
 			}
 			$r = wp_update_post( $postarr, true );
 			if ( is_wp_error( $r ) ) {
