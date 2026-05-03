@@ -65,27 +65,32 @@ add_action( 'add_meta_boxes_hvl_center', 'hovalvakil_register_center_meta_metabo
 function hovalvakil_render_lawyer_profile_metabox( $post ) {
 	wp_nonce_field( 'hovalvakil_lawyer_profile_save', 'hovalvakil_lawyer_profile_nonce' );
 
-	$rows = [
-		'hvl_experience'           => [ 'label' => 'سابقه و تجربه', 'type' => 'text', 'hint' => 'مثال: ۱۲ سال تجربه' ],
-		'hvl_price_from'           => [ 'label' => 'حداقل هزینه / قیمت از', 'type' => 'text', 'hint' => 'متن نمایشی برای کاربر' ],
-		'hvl_rating'               => [ 'label' => 'امتیاز', 'type' => 'text', 'hint' => 'مثال: ۴٫۸' ],
-		'hvl_reviews_count'        => [ 'label' => 'تعداد نظرات', 'type' => 'text', 'hint' => 'عدد به‌صورت متن' ],
-		'hvl_license'              => [ 'label' => 'پروانه وکالت', 'type' => 'text', 'hint' => '' ],
-		'hvl_education'            => [ 'label' => 'تحصیلات', 'type' => 'text', 'hint' => '' ],
-		'hvl_office_phone'         => [ 'label' => 'تلفن دفتر', 'type' => 'text', 'hint' => '' ],
-		'hvl_office_working_hours' => [ 'label' => 'ساعات کاری دفتر', 'type' => 'text', 'hint' => '' ],
-		'hvl_office_map_image'     => [ 'label' => 'آدرس تصویر نقشه (URL)', 'type' => 'text', 'hint' => 'لینک کامل تصویر یا نقشه' ],
-		'hvl_records'              => [ 'label' => 'سوابق، عضویت و افتخارات', 'type' => 'textarea', 'hint' => '' ],
-		'hvl_services'             => [ 'label' => 'حوزه خدمات', 'type' => 'textarea', 'hint' => 'فهرست کوتاه خدمات' ],
-		'hvl_office_address'       => [ 'label' => 'آدرس دفتر', 'type' => 'textarea', 'hint' => '' ],
-	];
+	$rows = function_exists( 'hovalvakil_lawyer_profile_meta_rows' ) ? hovalvakil_lawyer_profile_meta_rows() : [];
 
 	echo '<table class="form-table" role="presentation">';
 	foreach ( $rows as $key => $cfg ) {
+		if ( 'section' === ( $cfg['type'] ?? '' ) ) {
+			echo '<tr class="hvl-meta-section"><td colspan="2"><strong>' . esc_html( $cfg['label'] ) . '</strong>';
+			if ( '' !== ( $cfg['hint'] ?? '' ) ) {
+				echo '<p class="description" style="margin:.35rem 0 0;">' . esc_html( $cfg['hint'] ) . '</p>';
+			}
+			echo '</td></tr>';
+			continue;
+		}
+
 		$val = (string) get_post_meta( $post->ID, $key, true );
 		echo '<tr><th scope="row"><label for="' . esc_attr( $key ) . '">' . esc_html( $cfg['label'] ) . '</label></th><td>';
+
 		if ( 'textarea' === $cfg['type'] ) {
 			echo '<textarea class="large-text" rows="4" id="' . esc_attr( $key ) . '" name="' . esc_attr( $key ) . '">' . esc_textarea( $val ) . '</textarea>';
+		} elseif ( 'date' === $cfg['type'] ) {
+			$date_val = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $val ) ? $val : '';
+			echo '<input type="date" class="regular-text" id="' . esc_attr( $key ) . '" name="' . esc_attr( $key ) . '" value="' . esc_attr( $date_val ) . '" />';
+			if ( '' !== $val && '' === $date_val ) {
+				echo '<p class="description">' . esc_html__( 'مقدار ذخیره‌شده (متن): ', 'hello-elementor' ) . esc_html( $val ) . '</p>';
+			}
+		} elseif ( 'url' === $cfg['type'] ) {
+			echo '<input type="url" class="large-text" id="' . esc_attr( $key ) . '" name="' . esc_attr( $key ) . '" value="' . esc_attr( $val ) . '" placeholder="https://..." />';
 		} else {
 			echo '<input type="text" class="large-text" id="' . esc_attr( $key ) . '" name="' . esc_attr( $key ) . '" value="' . esc_attr( $val ) . '" />';
 		}
@@ -144,31 +149,53 @@ function hovalvakil_save_lawyer_profile_meta( $post_id ) {
 		return;
 	}
 
-	$text = [
+	$text_keys = [
+		'hvl_mobile',
+		'hvl_office_mobile',
+		'hvl_license_no',
+		'hvl_lawyer_grade',
+		'hvl_license',
 		'hvl_experience',
 		'hvl_price_from',
 		'hvl_rating',
 		'hvl_reviews_count',
-		'hvl_license',
 		'hvl_education',
 		'hvl_office_phone',
 		'hvl_office_working_hours',
 		'hvl_office_map_image',
 	];
-	foreach ( $text as $key ) {
+	foreach ( $text_keys as $key ) {
 		if ( ! isset( $_POST[ $key ] ) ) {
 			continue;
 		}
-		$v = sanitize_text_field( wp_unslash( $_POST[ $key ] ) );
-		update_post_meta( $post_id, $key, $v );
+		update_post_meta( $post_id, $key, sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) );
 	}
+
+	if ( isset( $_POST['hvl_license_issued'] ) && function_exists( 'hovalvakil_lawyer_normalize_license_expires' ) ) {
+		update_post_meta(
+			$post_id,
+			'hvl_license_issued',
+			hovalvakil_lawyer_normalize_license_expires( wp_unslash( $_POST['hvl_license_issued'] ) )
+		);
+	}
+	if ( isset( $_POST['hvl_license_expires'] ) && function_exists( 'hovalvakil_lawyer_normalize_license_expires' ) ) {
+		update_post_meta(
+			$post_id,
+			'hvl_license_expires',
+			hovalvakil_lawyer_normalize_license_expires( wp_unslash( $_POST['hvl_license_expires'] ) )
+		);
+	}
+
+	if ( isset( $_POST['hvl_license_file_url'] ) ) {
+		update_post_meta( $post_id, 'hvl_license_file_url', esc_url_raw( trim( wp_unslash( $_POST['hvl_license_file_url'] ) ) ) );
+	}
+
 	$areas = [ 'hvl_records', 'hvl_services', 'hvl_office_address' ];
 	foreach ( $areas as $key ) {
 		if ( ! isset( $_POST[ $key ] ) ) {
 			continue;
 		}
-		$v = sanitize_textarea_field( wp_unslash( $_POST[ $key ] ) );
-		update_post_meta( $post_id, $key, $v );
+		update_post_meta( $post_id, $key, sanitize_textarea_field( wp_unslash( $_POST[ $key ] ) ) );
 	}
 }
 add_action( 'save_post_hvl_lawyer', 'hovalvakil_save_lawyer_profile_meta' );

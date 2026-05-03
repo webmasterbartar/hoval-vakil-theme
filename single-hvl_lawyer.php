@@ -16,8 +16,10 @@ if ( ! have_posts() ) {
 
 the_post();
 
-$post_id   = get_the_ID();
-$image_url = get_the_post_thumbnail_url( $post_id, 'large' );
+$post_id = get_the_ID();
+$image_url = function_exists( 'hovalvakil_lawyer_profile_image_url' )
+	? hovalvakil_lawyer_profile_image_url( $post_id, 'large' )
+	: (string) get_the_post_thumbnail_url( $post_id, 'large' );
 
 if ( ! $image_url ) {
 	$image_url = 'https://via.placeholder.com/600x600.png?text=%D9%88%DA%A9%DB%8C%D9%84';
@@ -25,12 +27,20 @@ if ( ! $image_url ) {
 
 $specialties = get_the_terms( $post_id, 'hvl_specialty' );
 $cities      = get_the_terms( $post_id, 'hvl_city' );
+$provinces   = get_the_terms( $post_id, 'hvl_province' );
 
 $experience = (string) get_post_meta( $post_id, 'hvl_experience', true );
 $price_from = (string) get_post_meta( $post_id, 'hvl_price_from', true );
 $rating     = (string) get_post_meta( $post_id, 'hvl_rating', true );
 $reviews    = (string) get_post_meta( $post_id, 'hvl_reviews_count', true );
 $license    = (string) get_post_meta( $post_id, 'hvl_license', true );
+$license_no = (string) get_post_meta( $post_id, 'hvl_license_no', true );
+$license_issued_raw = (string) get_post_meta( $post_id, 'hvl_license_issued', true );
+$license_expires_raw = (string) get_post_meta( $post_id, 'hvl_license_expires', true );
+$license_file_url = (string) get_post_meta( $post_id, 'hvl_license_file_url', true );
+$lawyer_grade = (string) get_post_meta( $post_id, 'hvl_lawyer_grade', true );
+$mobile       = (string) get_post_meta( $post_id, 'hvl_mobile', true );
+$office_mobile = (string) get_post_meta( $post_id, 'hvl_office_mobile', true );
 $education  = (string) get_post_meta( $post_id, 'hvl_education', true );
 $records    = (string) get_post_meta( $post_id, 'hvl_records', true );
 $services   = (string) get_post_meta( $post_id, 'hvl_services', true );
@@ -38,6 +48,14 @@ $office_address = (string) get_post_meta( $post_id, 'hvl_office_address', true )
 $office_map_image = (string) get_post_meta( $post_id, 'hvl_office_map_image', true );
 $office_phone = (string) get_post_meta( $post_id, 'hvl_office_phone', true );
 $office_working_hours = (string) get_post_meta( $post_id, 'hvl_office_working_hours', true );
+
+$license_issued_display = function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
+	? hovalvakil_lawyer_format_license_expires_display( $license_issued_raw )
+	: '';
+$license_expires_display = function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
+	? hovalvakil_lawyer_format_license_expires_display( $license_expires_raw )
+	: '';
+$province_name = ( is_array( $provinces ) && ! empty( $provinces ) ) ? (string) $provinces[0]->name : '';
 
 if ( '' === $experience ) {
 	$experience = '۵ سال تجربه';
@@ -55,20 +73,22 @@ if ( '' === $reviews ) {
 	$reviews = '20';
 }
 
-if ( '' === $license ) {
+if ( '' === $license_no && '' === $license ) {
 	$license = 'شماره پروانه: ' . str_pad( (string) $post_id, 6, '0', STR_PAD_LEFT );
+} elseif ( '' !== $license_no ) {
+	$license = $license_no;
 }
 if ( '' === $education ) {
 	$education = 'کارشناسی ارشد حقوق';
 }
-$city_name = ( is_array( $cities ) && ! empty( $cities ) ) ? $cities[0]->name : 'تهران';
-if ( '' === $office_address ) {
+$city_name = ( is_array( $cities ) && ! empty( $cities ) ) ? $cities[0]->name : '';
+if ( '' === $office_address && '' !== $city_name ) {
 	$office_address = $city_name . '، دفتر مرکزی وکالت';
 }
 if ( '' === $office_map_image ) {
 	$office_map_image = 'https://via.placeholder.com/900x360.png?text=%D9%86%D9%82%D8%B4%D9%87+%D8%AF%D9%81%D8%AA%D8%B1';
 }
-if ( '' === $office_phone ) {
+if ( '' === $office_phone && '' === $office_mobile && '' === $mobile ) {
 	$office_phone = '۰۲۱-۱۲۳۴۵۶۷۸';
 }
 if ( '' === $office_working_hours ) {
@@ -100,13 +120,15 @@ $reservation_url = add_query_arg(
 		'lawyer_id' => $post_id,
 		'name'      => get_the_title(),
 		'specialty' => $primary_specialty,
-		'city'      => $city_name,
+		'city'      => $city_name ? $city_name : ( $province_name ? $province_name : '' ),
 		'image'     => $image_url,
 		'price'     => $price_from,
 		'service'   => 'مشاوره حضوری',
 	],
 	home_url( '/rezerv' )
 );
+
+$lawyer_grade_display = '' !== $lawyer_grade ? $lawyer_grade : ( $secondary_specs[1] ?? 'پایه یک دادگستری' );
 
 $records_items = array_values(
 	array_filter(
@@ -190,7 +212,7 @@ get_header();
 					<div class="profile-tags">
 						<span class="tag-item"><?php echo esc_html( $primary_specialty ); ?></span>
 						<span class="tag-item"><?php echo esc_html( $secondary_specs[0] ); ?></span>
-						<span class="tag-item primary"><?php echo esc_html( $secondary_specs[1] ?? 'پایه یک دادگستری' ); ?></span>
+						<span class="tag-item primary"><?php echo esc_html( $lawyer_grade_display ); ?></span>
 					</div>
 
 					<div class="profile-stats-mini">
@@ -204,7 +226,7 @@ get_header();
 					<div class="profile-details-grid">
 						<div class="detail-item">
 							<span class="material-symbols-outlined">location_on</span>
-							<span><?php echo esc_html( $city_name ); ?></span>
+							<span><?php echo esc_html( implode( '، ', array_filter( [ $province_name, $city_name ] ) ) ?: '—' ); ?></span>
 						</div>
 						<div class="detail-item">
 							<span class="material-symbols-outlined">work_history</span>
@@ -240,6 +262,7 @@ get_header();
 				<li class="active" data-tab="about">درباره وکیل</li>
 				<li data-tab="specs">تخصص‌ها</li>
 				<li data-tab="records">سوابق</li>
+				<li data-tab="license-contact">پروانه و تماس</li>
 				<li data-tab="reviews">نظرات</li>
 				<li data-tab="calendar">رزرو نوبت</li>
 			</ul>
@@ -274,6 +297,43 @@ get_header();
 							<?php foreach ( $records_items as $record_item ) : ?>
 								<li style="margin-bottom:1rem;"><?php echo esc_html( $record_item ); ?></li>
 							<?php endforeach; ?>
+						</ul>
+					</section>
+				</div>
+
+				<div id="license-contact" class="tab-content">
+					<section class="content-block">
+						<h2 class="block-title"><span class="material-symbols-outlined">badge</span>پروانه وکالت</h2>
+						<dl class="hvl-dl-grid" style="display:grid;gap:.75rem 1.5rem;grid-template-columns:minmax(0,140px) 1fr;align-items:start;">
+							<dt class="text-on-surface-variant text-sm">پایه / سطح</dt>
+							<dd class="m-0 font-bold"><?php echo esc_html( '' !== $lawyer_grade ? $lawyer_grade : '—' ); ?></dd>
+							<dt class="text-on-surface-variant text-sm">شماره پروانه</dt>
+							<dd class="m-0"><?php echo esc_html( '' !== $license_no ? $license_no : ( '' !== $license ? $license : '—' ) ); ?></dd>
+							<dt class="text-on-surface-variant text-sm">تاریخ صدور پروانه</dt>
+							<dd class="m-0"><?php echo esc_html( '' !== $license_issued_display ? $license_issued_display : ( '' !== $license_issued_raw ? $license_issued_raw : '—' ) ); ?></dd>
+							<dt class="text-on-surface-variant text-sm">تاریخ انقضا</dt>
+							<dd class="m-0"><?php echo esc_html( '' !== $license_expires_display ? $license_expires_display : ( '' !== $license_expires_raw ? $license_expires_raw : '—' ) ); ?></dd>
+							<?php if ( '' !== $license_file_url ) : ?>
+								<dt class="text-on-surface-variant text-sm">فایل پروانه</dt>
+								<dd class="m-0"><a class="btn-primary-sm" style="display:inline-block;padding:.5rem 1rem;" href="<?php echo esc_url( $license_file_url ); ?>" target="_blank" rel="noopener noreferrer">دانلود / مشاهده</a></dd>
+							<?php endif; ?>
+						</dl>
+					</section>
+					<section class="content-block" style="margin-top:1.5rem;">
+						<h2 class="block-title"><span class="material-symbols-outlined">call</span>تماس</h2>
+						<ul class="hvl-contact-list" style="list-style:none;padding:0;margin:0;line-height:2;">
+							<?php if ( '' !== $mobile ) : ?>
+								<li><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">smartphone</span> همراه وکیل: <a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $mobile ) ); ?>"><?php echo esc_html( $mobile ); ?></a></li>
+							<?php endif; ?>
+							<?php if ( '' !== $office_mobile ) : ?>
+								<li><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">phone_iphone</span> همراه دفتر: <a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_mobile ) ); ?>"><?php echo esc_html( $office_mobile ); ?></a></li>
+							<?php endif; ?>
+							<?php if ( '' !== $office_phone ) : ?>
+								<li><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">call</span> تلفن دفتر: <a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_phone ) ); ?>"><?php echo esc_html( $office_phone ); ?></a></li>
+							<?php endif; ?>
+							<?php if ( '' === $mobile && '' === $office_mobile && '' === $office_phone ) : ?>
+								<li class="text-on-surface-variant">شماره تماسی ثبت نشده است.</li>
+							<?php endif; ?>
 						</ul>
 					</section>
 				</div>
@@ -373,9 +433,21 @@ get_header();
 					<p class="text-sm text-on-surface-variant" style="line-height:1.9;margin-bottom:.75rem;">
 						<?php echo esc_html( $office_address ); ?>
 					</p>
+					<?php if ( '' !== $mobile ) : ?>
+						<p class="text-xs text-on-surface-variant" style="margin-bottom:.35rem;">
+							<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">smartphone</span>
+							<a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $mobile ) ); ?>"><?php echo esc_html( $mobile ); ?></a>
+						</p>
+					<?php endif; ?>
+					<?php if ( '' !== $office_mobile ) : ?>
+						<p class="text-xs text-on-surface-variant" style="margin-bottom:.35rem;">
+							<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">phone_iphone</span>
+							<a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_mobile ) ); ?>"><?php echo esc_html( $office_mobile ); ?></a>
+						</p>
+					<?php endif; ?>
 					<p class="text-xs text-on-surface-variant" style="margin-bottom:.35rem;">
 						<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">call</span>
-						<?php echo esc_html( $office_phone ); ?>
+						<a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_phone ) ); ?>"><?php echo esc_html( $office_phone ); ?></a>
 					</p>
 					<p class="text-xs text-on-surface-variant">
 						<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">schedule</span>
@@ -403,7 +475,9 @@ get_header();
 						<?php
 						$related_query->the_post();
 						$rid      = get_the_ID();
-						$rimg     = get_the_post_thumbnail_url( $rid, 'medium' );
+						$rimg     = function_exists( 'hovalvakil_lawyer_profile_image_url' )
+							? hovalvakil_lawyer_profile_image_url( $rid, 'medium' )
+							: (string) get_the_post_thumbnail_url( $rid, 'medium' );
 						$rspecs   = get_the_terms( $rid, 'hvl_specialty' );
 						$rcities  = get_the_terms( $rid, 'hvl_city' );
 						$rspec    = is_array( $rspecs ) && ! empty( $rspecs ) ? $rspecs[0]->name : '—';

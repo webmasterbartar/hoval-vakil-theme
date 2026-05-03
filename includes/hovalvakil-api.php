@@ -90,12 +90,13 @@ function hovalvakil_register_rest_routes() {
 			'callback'            => 'hovalvakil_rest_get_lawyers',
 			'permission_callback' => '__return_true',
 			'args'                => [
-				'q'         => [ 'type' => 'string', 'required' => false ],
-				'city'      => [ 'type' => 'string', 'required' => false ],
-				'city_term' => [ 'type' => 'string', 'required' => false ],
-				'specialty' => [ 'type' => 'string', 'required' => false ],
-				'page'      => [ 'type' => 'integer', 'required' => false, 'default' => 1 ],
-				'per_page'  => [ 'type' => 'integer', 'required' => false, 'default' => 16 ],
+				'q'             => [ 'type' => 'string', 'required' => false ],
+				'city'          => [ 'type' => 'string', 'required' => false ],
+				'city_term'     => [ 'type' => 'string', 'required' => false ],
+				'province_term' => [ 'type' => 'string', 'required' => false ],
+				'specialty'     => [ 'type' => 'string', 'required' => false ],
+				'page'          => [ 'type' => 'integer', 'required' => false, 'default' => 1 ],
+				'per_page'      => [ 'type' => 'integer', 'required' => false, 'default' => 16 ],
 			],
 		]
 	);
@@ -368,12 +369,14 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 
 	$city      = sanitize_text_field( trim( (string) wp_unslash( $request->get_param( 'city' ) ) ) ); // backward-compatible city name.
 	$city_term = hovalvakil_rest_get_csv_query_param( $request, 'city_term' );
+	$province_term = hovalvakil_rest_get_csv_query_param( $request, 'province_term' );
 	$specialty = hovalvakil_rest_get_csv_query_param( $request, 'specialty' );
 	$page      = max( 1, (int) $request->get_param( 'page' ) );
 	$per_page  = min( 48, max( 1, (int) $request->get_param( 'per_page' ) ) );
 
 	$tax_query = [];
-	$city_slugs      = hovalvakil_rest_resolve_taxonomy_slugs( $city_term, 'hvl_city' );
+	$city_slugs       = hovalvakil_rest_resolve_taxonomy_slugs( $city_term, 'hvl_city' );
+	$province_slugs  = hovalvakil_rest_resolve_taxonomy_slugs( $province_term, 'hvl_province' );
 	$specialty_slugs = hovalvakil_rest_resolve_taxonomy_slugs( $specialty, 'hvl_specialty' );
 
 	if ( '' !== $city ) {
@@ -396,6 +399,13 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			'taxonomy' => 'hvl_specialty',
 			'field'    => 'slug',
 			'terms'    => $specialty_slugs,
+		];
+	}
+	if ( ! empty( $province_slugs ) ) {
+		$tax_query[] = [
+			'taxonomy' => 'hvl_province',
+			'field'    => 'slug',
+			'terms'    => $province_slugs,
 		];
 	}
 	if ( count( $tax_query ) > 1 ) {
@@ -433,6 +443,13 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			]
 		);
 
+		$province_terms = get_terms(
+			[
+				'taxonomy'   => 'hvl_province',
+				'hide_empty' => false,
+			]
+		);
+
 		$matched_city_slugs = [];
 		if ( ! is_wp_error( $city_terms ) ) {
 			foreach ( $city_terms as $cterm ) {
@@ -451,6 +468,15 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			}
 		}
 
+		$matched_province_slugs = [];
+		if ( ! is_wp_error( $province_terms ) ) {
+			foreach ( $province_terms as $pterm ) {
+				if ( false !== mb_stripos( $pterm->name, $q ) ) {
+					$matched_province_slugs[] = $pterm->slug;
+				}
+			}
+		}
+
 		$text_match_args = $base_args;
 		$text_match_args['fields']         = 'ids';
 		$text_match_args['posts_per_page'] = 300;
@@ -460,7 +486,7 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		$text_ids = get_posts( $text_match_args );
 
 		$tax_match_ids = [];
-		if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) ) {
+		if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) || ! empty( $matched_province_slugs ) ) {
 			$tax_match_args = $base_args;
 			$tax_match_args['fields']         = 'ids';
 			$tax_match_args['posts_per_page'] = 300;
@@ -480,6 +506,13 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 					'taxonomy' => 'hvl_specialty',
 					'field'    => 'slug',
 					'terms'    => $matched_specialty_slugs,
+				];
+			}
+			if ( ! empty( $matched_province_slugs ) ) {
+				$q_tax[] = [
+					'taxonomy' => 'hvl_province',
+					'field'    => 'slug',
+					'terms'    => $matched_province_slugs,
 				];
 			}
 			if ( count( $q_tax ) > 1 ) {
@@ -516,13 +549,16 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		$query->the_post();
 		$post_id = get_the_ID();
 
-		$img = get_the_post_thumbnail_url( $post_id, 'medium' );
+		$img = function_exists( 'hovalvakil_lawyer_profile_image_url' )
+			? hovalvakil_lawyer_profile_image_url( $post_id, 'medium' )
+			: (string) get_the_post_thumbnail_url( $post_id, 'medium' );
 		if ( ! $img ) {
 			$img = 'https://via.placeholder.com/600x600.png?text=%D9%88%DA%A9%DB%8C%D9%84';
 		}
 
-		$spec_terms = get_the_terms( $post_id, 'hvl_specialty' );
-		$city_terms = get_the_terms( $post_id, 'hvl_city' );
+		$spec_terms  = get_the_terms( $post_id, 'hvl_specialty' );
+		$city_terms  = get_the_terms( $post_id, 'hvl_city' );
+		$prov_terms  = get_the_terms( $post_id, 'hvl_province' );
 
 		$spec_names = [];
 		if ( is_array( $spec_terms ) && ! empty( $spec_terms ) ) {
@@ -536,6 +572,22 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		}
 		$primary_specialty = ! empty( $spec_names ) ? $spec_names[0] : '';
 
+		$province_name = is_array( $prov_terms ) && ! empty( $prov_terms ) ? (string) $prov_terms[0]->name : '';
+		$city_name     = is_array( $city_terms ) && ! empty( $city_terms ) ? (string) $city_terms[0]->name : '';
+		$lawyer_grade  = (string) get_post_meta( $post_id, 'hvl_lawyer_grade', true );
+		$lic_issued_raw = (string) get_post_meta( $post_id, 'hvl_license_issued', true );
+		$lic_exp_raw   = (string) get_post_meta( $post_id, 'hvl_license_expires', true );
+		$lic_issued_disp = function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
+			? hovalvakil_lawyer_format_license_expires_display( $lic_issued_raw )
+			: '';
+		$lic_exp_disp  = function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
+			? hovalvakil_lawyer_format_license_expires_display( $lic_exp_raw )
+			: '';
+		$location_line = implode(
+			'، ',
+			array_filter( [ $province_name, $city_name ] )
+		);
+
 		$items[] = [
 			'id'         => $post_id,
 			'name'       => get_the_title(),
@@ -543,7 +595,14 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			'image'      => $img,
 			'specialty'  => $primary_specialty,
 			'specialties'=> $spec_names,
-			'city'       => is_array( $city_terms ) && ! empty( $city_terms ) ? $city_terms[0]->name : '',
+			'city'       => $city_name,
+			'province'   => $province_name,
+			'location_line' => $location_line,
+			'lawyer_grade' => $lawyer_grade,
+			'license_issued' => $lic_issued_raw,
+			'license_issued_display' => $lic_issued_disp,
+			'license_expires' => $lic_exp_raw,
+			'license_expires_display' => $lic_exp_disp,
 			'experience' => (string) get_post_meta( $post_id, 'hvl_experience', true ),
 			'price_from' => (string) get_post_meta( $post_id, 'hvl_price_from', true ),
 			'rating'     => (string) get_post_meta( $post_id, 'hvl_rating', true ),
@@ -779,23 +838,48 @@ function hovalvakil_rest_get_lawyer_by_id( WP_REST_Request $request ) {
 		);
 	}
 
-	$image = get_the_post_thumbnail_url( $lawyer_id, 'large' );
+	$image = function_exists( 'hovalvakil_lawyer_profile_image_url' )
+		? hovalvakil_lawyer_profile_image_url( $lawyer_id, 'large' )
+		: (string) get_the_post_thumbnail_url( $lawyer_id, 'large' );
 	if ( ! $image ) {
 		$image = 'https://via.placeholder.com/600x600.png?text=%D9%88%DA%A9%DB%8C%D9%84';
 	}
 
-	$spec_terms = get_the_terms( $lawyer_id, 'hvl_specialty' );
-	$city_terms = get_the_terms( $lawyer_id, 'hvl_city' );
+	$spec_terms  = get_the_terms( $lawyer_id, 'hvl_specialty' );
+	$city_terms  = get_the_terms( $lawyer_id, 'hvl_city' );
+	$prov_terms  = get_the_terms( $lawyer_id, 'hvl_province' );
+	$province_nm = is_array( $prov_terms ) && ! empty( $prov_terms ) ? (string) $prov_terms[0]->name : '';
+	$city_nm     = is_array( $city_terms ) && ! empty( $city_terms ) ? (string) $city_terms[0]->name : '';
+	$lic_issued  = (string) get_post_meta( $lawyer_id, 'hvl_license_issued', true );
+	$lic_exp     = (string) get_post_meta( $lawyer_id, 'hvl_license_expires', true );
 
 	return rest_ensure_response(
 		[
 			'ok'    => true,
 			'item'  => [
-				'id'         => $lawyer_id,
-				'name'       => get_the_title( $lawyer_id ),
-				'image'      => $image,
-				'specialty'  => is_array( $spec_terms ) && ! empty( $spec_terms ) ? $spec_terms[0]->name : '',
-				'city'       => is_array( $city_terms ) && ! empty( $city_terms ) ? $city_terms[0]->name : '',
+				'id'          => $lawyer_id,
+				'name'        => get_the_title( $lawyer_id ),
+				'image'       => $image,
+				'specialty'   => is_array( $spec_terms ) && ! empty( $spec_terms ) ? $spec_terms[0]->name : '',
+				'city'        => $city_nm,
+				'province'    => $province_nm,
+				'location_line' => implode( '، ', array_filter( [ $province_nm, $city_nm ] ) ),
+				'mobile'          => (string) get_post_meta( $lawyer_id, 'hvl_mobile', true ),
+				'office_mobile'   => (string) get_post_meta( $lawyer_id, 'hvl_office_mobile', true ),
+				'office_phone'    => (string) get_post_meta( $lawyer_id, 'hvl_office_phone', true ),
+				'office_address'  => (string) get_post_meta( $lawyer_id, 'hvl_office_address', true ),
+				'lawyer_grade'    => (string) get_post_meta( $lawyer_id, 'hvl_lawyer_grade', true ),
+				'license_no'      => (string) get_post_meta( $lawyer_id, 'hvl_license_no', true ),
+				'license_text'    => (string) get_post_meta( $lawyer_id, 'hvl_license', true ),
+				'license_issued' => $lic_issued,
+				'license_issued_display' => function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
+					? hovalvakil_lawyer_format_license_expires_display( $lic_issued )
+					: '',
+				'license_expires' => $lic_exp,
+				'license_expires_display' => function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
+					? hovalvakil_lawyer_format_license_expires_display( $lic_exp )
+					: '',
+				'license_file_url' => (string) get_post_meta( $lawyer_id, 'hvl_license_file_url', true ),
 				'price_from' => (string) get_post_meta( $lawyer_id, 'hvl_price_from', true ),
 				'rating'     => (string) get_post_meta( $lawyer_id, 'hvl_rating', true ),
 				'reviews'    => (string) get_post_meta( $lawyer_id, 'hvl_reviews_count', true ),

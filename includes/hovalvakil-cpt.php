@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return void
  */
 function hovalvakil_maybe_flush_rewrite_rules() {
-	$current = '2026-04-12-revert-ar-slugs';
+	$current = '2026-05-03-hvl-province-tax';
 	$saved   = get_option( 'hovalvakil_rewrite_version' );
 
 	if ( $saved === $current ) {
@@ -296,6 +296,42 @@ function hovalvakil_register_content_types() {
 			'show_in_rest' => true,
 			'hierarchical' => true,
 			'rewrite'      => [ 'slug' => 'takhassos' ],
+		]
+	);
+
+	register_taxonomy(
+		'hvl_province',
+		[ 'hvl_lawyer', 'hvl_center' ],
+		[
+			'labels'            => [
+				'name'                       => 'استان‌ها',
+				'singular_name'              => 'استان',
+				'menu_name'                  => 'استان‌ها',
+				'search_items'               => 'جستجوی استان‌ها',
+				'popular_items'              => 'استان‌های پرکاربرد',
+				'all_items'                  => 'همهٔ استان‌ها',
+				'edit_item'                  => 'ویرایش استان',
+				'update_item'                => 'به‌روزرسانی استان',
+				'add_new_item'               => 'افزودن استان',
+				'new_item_name'              => 'نام استان جدید',
+				'separate_items_with_commas' => 'استان‌ها را با ویرگول جدا کنید',
+				'add_or_remove_items'        => 'افزودن یا حذف استان',
+				'choose_from_most_used'      => 'از پرکاربردترین استان‌ها انتخاب کنید',
+				'not_found'                  => 'استانی پیدا نشد',
+				'no_terms'                   => 'هیچ استانی نیست',
+				'filter_by_item'             => 'فیلتر بر اساس استان',
+				'items_list_navigation'      => 'ناوبری فهرست استان‌ها',
+				'items_list'                 => 'فهرست استان‌ها',
+				'most_used'                  => 'پرکاربردترین',
+				'back_to_items'              => '← بازگشت به استان‌ها',
+				'view_item'                  => 'مشاهده استان',
+			],
+			'description'       => 'استان مرتبط با وکیل یا مرکز.',
+			'public'            => true,
+			'show_in_rest'      => true,
+			'hierarchical'      => false,
+			'show_admin_column' => true,
+			'rewrite'           => [ 'slug' => 'ostan' ],
 		]
 	);
 }

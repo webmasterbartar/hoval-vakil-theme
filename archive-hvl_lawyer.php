@@ -72,6 +72,7 @@ $q           = sanitize_text_field( hovalvakil_get_param( 'q' ) );
 $city        = sanitize_text_field( hovalvakil_get_param( 'city' ) );
 $specialties = hovalvakil_get_param_array( 'specialty' ); // term slugs.
 $city_terms_selected = hovalvakil_get_param_array( 'city_term' ); // city term slugs.
+$province_terms_selected = hovalvakil_get_param_array( 'province_term' ); // province term slugs.
 $selected_specialty = ! empty( $specialties ) ? $specialties[0] : '';
 
 $tax_query = [];
@@ -85,6 +86,9 @@ if ( '' !== $city ) {
 }
 $city_terms_selected = array_values( array_unique( array_filter( $city_terms_selected ) ) );
 $selected_city_slug  = ! empty( $city_terms_selected ) ? $city_terms_selected[0] : '';
+
+$province_terms_selected = array_values( array_unique( array_filter( $province_terms_selected ) ) );
+$selected_province_slug    = ! empty( $province_terms_selected ) ? $province_terms_selected[0] : '';
 
 if ( '' !== $city ) {
 	// Keep query param visible in URL but use slug-based filtering.
@@ -103,6 +107,14 @@ if ( ! empty( $specialties ) ) {
 		'taxonomy' => 'hvl_specialty',
 		'field'    => 'slug',
 		'terms'    => $specialties,
+	];
+}
+
+if ( ! empty( $province_terms_selected ) ) {
+	$tax_query[] = [
+		'taxonomy' => 'hvl_province',
+		'field'    => 'slug',
+		'terms'    => $province_terms_selected,
 	];
 }
 
@@ -141,6 +153,15 @@ $specialty_terms = get_terms(
 	]
 );
 
+$province_terms = get_terms(
+	[
+		'taxonomy'   => 'hvl_province',
+		'hide_empty' => false,
+		'orderby'    => 'name',
+		'order'      => 'ASC',
+	]
+);
+
 // Strong search: combine text match + taxonomy name match and then apply base filters.
 if ( '' !== $q ) {
 	$matched_city_slugs = [];
@@ -161,6 +182,15 @@ if ( '' !== $q ) {
 		}
 	}
 
+	$matched_province_slugs = [];
+	if ( ! is_wp_error( $province_terms ) ) {
+		foreach ( $province_terms as $pterm ) {
+			if ( false !== mb_stripos( $pterm->name, $q ) ) {
+				$matched_province_slugs[] = $pterm->slug;
+			}
+		}
+	}
+
 	$text_query_args = $base_query_args;
 	$text_query_args['fields']         = 'ids';
 	$text_query_args['posts_per_page'] = 300;
@@ -170,7 +200,7 @@ if ( '' !== $q ) {
 	$text_ids = get_posts( $text_query_args );
 
 	$tax_match_ids = [];
-	if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) ) {
+	if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) || ! empty( $matched_province_slugs ) ) {
 		$tax_match_query_args = $base_query_args;
 		$tax_match_query_args['fields']         = 'ids';
 		$tax_match_query_args['posts_per_page'] = 300;
@@ -190,6 +220,13 @@ if ( '' !== $q ) {
 				'taxonomy' => 'hvl_specialty',
 				'field'    => 'slug',
 				'terms'    => $matched_specialty_slugs,
+			];
+		}
+		if ( ! empty( $matched_province_slugs ) ) {
+			$q_tax[] = [
+				'taxonomy' => 'hvl_province',
+				'field'    => 'slug',
+				'terms'    => $matched_province_slugs,
 			];
 		}
 		if ( count( $q_tax ) > 1 ) {
@@ -231,6 +268,19 @@ get_header();
 <main id="content" class="archive-main container">
 	<section class="archive-search-card">
 		<form id="archive-search-form" class="archive-search-grid" method="get" action="<?php echo esc_url( get_post_type_archive_link( 'hvl_lawyer' ) ); ?>">
+			<div class="archive-field">
+				<span class="material-symbols-outlined">map</span>
+				<select name="province_term[]" id="archive-province-select">
+					<option value="">همه استان‌ها</option>
+					<?php if ( ! is_wp_error( $province_terms ) && ! empty( $province_terms ) ) : ?>
+						<?php foreach ( $province_terms as $prov_term_item ) : ?>
+							<option value="<?php echo esc_attr( $prov_term_item->slug ); ?>" <?php selected( $selected_province_slug, $prov_term_item->slug ); ?>>
+								<?php echo esc_html( $prov_term_item->name ); ?>
+							</option>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</select>
+			</div>
 			<div class="archive-field">
 				<span class="material-symbols-outlined">location_on</span>
 				<select name="city_term[]" id="archive-city-select">
@@ -297,6 +347,17 @@ get_header();
 			}
 			$active_line_parts[] = 'تخصص: ' . implode( '، ', ( ! empty( $spec_names ) ? $spec_names : $specialties ) );
 		}
+		if ( ! empty( $province_terms_selected ) && ! is_wp_error( $province_terms ) ) {
+			$prov_names = [];
+			foreach ( $province_terms as $pt ) {
+				if ( in_array( $pt->slug, $province_terms_selected, true ) ) {
+					$prov_names[] = $pt->name;
+				}
+			}
+			if ( ! empty( $prov_names ) ) {
+				$active_line_parts[] = 'استان: ' . implode( '، ', $prov_names );
+			}
+		}
 		$active_line_visible = ! empty( $active_line_parts );
 		?>
 		<div id="archive-active-filters" class="text-xs text-on-surface-variant" style="margin-top:10px;<?php echo $active_line_visible ? '' : ' display:none;'; ?>">
@@ -359,6 +420,23 @@ get_header();
 				</form>
 
 				<div class="archive-filter-group">
+					<h3>استان</h3>
+					<div class="archive-filter-list-scroll">
+						<?php if ( ! is_wp_error( $province_terms ) && ! empty( $province_terms ) ) : ?>
+							<?php foreach ( $province_terms as $prov_filter_term ) : ?>
+								<?php $prov_checked = in_array( $prov_filter_term->slug, $province_terms_selected, true ); ?>
+								<label>
+									<input type="checkbox" name="province_term[]" value="<?php echo esc_attr( $prov_filter_term->slug ); ?>" form="archive-filters-form" <?php checked( $prov_checked ); ?>/>
+									<?php echo esc_html( $prov_filter_term->name ); ?>
+								</label>
+							<?php endforeach; ?>
+						<?php else : ?>
+							<p class="text-xs text-on-surface-variant">هنوز استانی ثبت نشده است.</p>
+						<?php endif; ?>
+					</div>
+				</div>
+
+				<div class="archive-filter-group">
 					<h3>شهر</h3>
 					<div class="archive-filter-list-scroll">
 						<?php if ( ! is_wp_error( $city_terms ) && ! empty( $city_terms ) ) : ?>
@@ -385,7 +463,9 @@ get_header();
 				while ( $lawyers_query->have_posts() ) :
 					$lawyers_query->the_post();
 
-					$avatar_url = get_the_post_thumbnail_url( get_the_ID(), 'medium' );
+					$avatar_url = function_exists( 'hovalvakil_lawyer_profile_image_url' )
+						? hovalvakil_lawyer_profile_image_url( get_the_ID(), 'medium' )
+						: (string) get_the_post_thumbnail_url( get_the_ID(), 'medium' );
 					if ( ! $avatar_url ) {
 						$avatar_url = 'https://via.placeholder.com/160x160.png?text=%D9%88%DA%A9%DB%8C%D9%84';
 					}
@@ -401,6 +481,18 @@ get_header();
 					if ( is_array( $city_terms ) && ! empty( $city_terms ) ) {
 						$city_term = $city_terms[0];
 					}
+
+					$province_term = null;
+					$province_terms_card = get_the_terms( get_the_ID(), 'hvl_province' );
+					if ( is_array( $province_terms_card ) && ! empty( $province_terms_card ) ) {
+						$province_term = $province_terms_card[0];
+					}
+
+					$lawyer_grade_tag = (string) get_post_meta( get_the_ID(), 'hvl_lawyer_grade', true );
+					$license_exp_card = (string) get_post_meta( get_the_ID(), 'hvl_license_expires', true );
+					$license_exp_disp = function_exists( 'hovalvakil_lawyer_format_license_expires_display' )
+						? hovalvakil_lawyer_format_license_expires_display( $license_exp_card )
+						: '';
 
 					$experience = (string) get_post_meta( get_the_ID(), 'hvl_experience', true );
 					$price_from = (string) get_post_meta( get_the_ID(), 'hvl_price_from', true );
@@ -431,13 +523,19 @@ get_header();
 									<?php echo esc_html( $specialty_term ? $specialty_term->name : '—' ); ?>
 								</p>
 								<div class="archive-lawyer-tags">
-									<span>پایه یک دادگستری</span>
-									<span>حضوری</span>
-									<span>تلفنی</span>
+									<span><?php echo esc_html( '' !== $lawyer_grade_tag ? $lawyer_grade_tag : '—' ); ?></span>
+									<?php if ( $province_term ) : ?>
+										<span><?php echo esc_html( $province_term->name ); ?></span>
+									<?php endif; ?>
+									<?php if ( '' !== $license_exp_disp ) : ?>
+										<span>انقضا: <?php echo esc_html( $license_exp_disp ); ?></span>
+									<?php else : ?>
+										<span>مشاوره حقوقی</span>
+									<?php endif; ?>
 								</div>
 								<div class="archive-lawyer-meta">
 									<p><span class="material-symbols-outlined">history_edu</span><?php echo esc_html( '' !== $experience ? $experience : '—' ); ?></p>
-									<p><span class="material-symbols-outlined">location_on</span><?php echo esc_html( $city_term ? $city_term->name : '—' ); ?></p>
+									<p><span class="material-symbols-outlined">location_on</span><?php echo esc_html( implode( '، ', array_filter( [ $province_term ? $province_term->name : '', $city_term ? $city_term->name : '' ] ) ) ?: '—' ); ?></p>
 								</div>
 							</div>
 						</div>
@@ -499,6 +597,7 @@ get_header();
 	const filtersBackdrop = document.getElementById('archive-filters-backdrop');
 	const specialtySelect = document.getElementById('archive-specialty-select');
 	const citySelect = document.getElementById('archive-city-select');
+	const provinceSelect = document.getElementById('archive-province-select');
 	const searchForm = document.getElementById('archive-search-form');
 	const qInput = document.getElementById('archive-q-input');
 	const resultsList = document.getElementById('archive-results-list');
@@ -506,7 +605,7 @@ get_header();
 	const paginationWrap = document.getElementById('archive-pagination-wrap');
 	const archiveActiveFiltersEl = document.getElementById('archive-active-filters');
 	const ajaxApiBase = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/lawyers' ) ) ); ?>;
-	const archiveInitialSlugs = <?php echo wp_json_encode( [ 'specialty' => $selected_specialty, 'city_term' => $selected_city_slug ], JSON_UNESCAPED_UNICODE ); ?>;
+	const archiveInitialSlugs = <?php echo wp_json_encode( [ 'specialty' => $selected_specialty, 'city_term' => $selected_city_slug, 'province_term' => $selected_province_slug ], JSON_UNESCAPED_UNICODE ); ?>;
 	const ARCHIVE_PER_PAGE = 20;
 	let archiveDebounceTimer = null;
 	let archiveCurrentPage = 1;
@@ -571,6 +670,19 @@ get_header();
 		runArchiveAjaxFilter();
 	});
 
+	provinceSelect?.addEventListener('change', () => {
+		const provBoxes = document.querySelectorAll('#archive-filters-panel input[type="checkbox"][name="province_term[]"]');
+		provBoxes.forEach((box) => {
+			box.checked = false;
+		});
+		const selectedValue = provinceSelect.value;
+		if (selectedValue) {
+			const target = document.querySelector(`#archive-filters-panel input[type="checkbox"][name="province_term[]"][value="${CSS.escape(selectedValue)}"]`);
+			if (target) target.checked = true;
+		}
+		runArchiveAjaxFilter();
+	});
+
 	qInput?.addEventListener('input', () => {
 		if (archiveDebounceTimer) clearTimeout(archiveDebounceTimer);
 		archiveDebounceTimer = setTimeout(runArchiveAjaxFilter, 220);
@@ -629,20 +741,31 @@ get_header();
 	function syncTopFiltersFromSidebar() {
 		const citySlugs = getCheckedValues('city_term[]');
 		const specialtySlugs = getCheckedValues('specialty[]');
+		const provinceSlugs = getCheckedValues('province_term[]');
 		if (citySelect) {
 			citySelect.value = citySlugs[0] || '';
 		}
 		if (specialtySelect) {
 			specialtySelect.value = specialtySlugs[0] || '';
 		}
+		if (provinceSelect) {
+			provinceSelect.value = provinceSlugs[0] || '';
+		}
 	}
 
 	function archiveTermDisplayName(type, slug) {
 		if (!slug) return '';
-		const select = type === 'specialty' ? specialtySelect : citySelect;
+		let select = citySelect;
+		let inputName = 'city_term[]';
+		if (type === 'specialty') {
+			select = specialtySelect;
+			inputName = 'specialty[]';
+		} else if (type === 'province') {
+			select = provinceSelect;
+			inputName = 'province_term[]';
+		}
 		const opt = select?.querySelector(`option[value="${CSS.escape(slug)}"]`);
 		if (opt && opt.value) return opt.textContent.trim();
-		const inputName = type === 'specialty' ? 'specialty[]' : 'city_term[]';
 		const input = document.querySelector(`#archive-filters-panel input[name="${inputName}"][value="${CSS.escape(slug)}"]`);
 		if (input?.labels?.length) return input.labels[0].textContent.replace(/\s+/g, ' ').trim();
 		return slug;
@@ -655,10 +778,16 @@ get_header();
 		const qLine = qTrim.length >= 2 ? qTrim : '';
 		const selectedCity = citySelect?.value?.trim() || '';
 		const selectedSpecialty = specialtySelect?.value?.trim() || '';
+		const selectedProvince = provinceSelect?.value?.trim() || '';
 		const mergedCitySlugs = Array.from(new Set([...getCheckedValues('city_term[]'), ...(selectedCity ? [selectedCity] : [])]));
 		const mergedSpecialtySlugs = Array.from(new Set([...getCheckedValues('specialty[]'), ...(selectedSpecialty ? [selectedSpecialty] : [])]));
+		const mergedProvinceSlugs = Array.from(new Set([...getCheckedValues('province_term[]'), ...(selectedProvince ? [selectedProvince] : [])]));
 		const parts = [];
 		if (qLine) parts.push(`جستجو: ${qLine}`);
+		if (mergedProvinceSlugs.length) {
+			const names = mergedProvinceSlugs.map((s) => archiveTermDisplayName('province', s)).filter(Boolean);
+			if (names.length) parts.push(`استان: ${names.join('، ')}`);
+		}
 		if (mergedCitySlugs.length) {
 			const names = mergedCitySlugs.map((s) => archiveTermDisplayName('city', s)).filter(Boolean);
 			if (names.length) parts.push(`شهر: ${names.join('، ')}`);
@@ -676,9 +805,10 @@ get_header();
 		archiveActiveFiltersEl.textContent = `فیلتر فعال: ${parts.join(' | ')}`;
 	}
 
-	function updateArchiveUrlState({ q, citySlugs, specialtySlugs, page }) {
+	function updateArchiveUrlState({ q, provinceSlugs, citySlugs, specialtySlugs, page }) {
 		const params = new URLSearchParams();
 		if (q) params.set('q', q);
+		provinceSlugs.forEach((slug) => params.append('province_term[]', slug));
 		citySlugs.forEach((slug) => params.append('city_term[]', slug));
 		specialtySlugs.forEach((slug) => params.append('specialty[]', slug));
 		if (page && page > 1) params.set('paged', String(page));
@@ -692,7 +822,13 @@ get_header();
 			resultsList.innerHTML = '<p class="text-on-surface-variant">موردی یافت نشد.</p>';
 			return;
 		}
-		const html = items.map((item) => `
+		const html = items.map((item) => {
+			const grade = escapeHtml(item.lawyer_grade || '—');
+			const prov = escapeHtml(item.province || '');
+			const expDisp = escapeHtml(item.license_expires_display || '');
+			const tag3 = expDisp ? `انقضا: ${expDisp}` : 'مشاوره حقوقی';
+			const loc = escapeHtml(item.location_line || item.city || '—');
+			return `
 			<article class="archive-lawyer-card">
 				<div class="archive-lawyer-main">
 					<img class="archive-lawyer-avatar" src="${escapeHtml(item.image || '')}" alt="${escapeHtml(item.name || '')}"/>
@@ -703,13 +839,13 @@ get_header();
 						</div>
 						<p class="archive-lawyer-specialty">${escapeHtml(item.specialty || '—')}</p>
 						<div class="archive-lawyer-tags">
-							<span>پایه یک دادگستری</span>
-							<span>حضوری</span>
-							<span>تلفنی</span>
+							<span>${grade}</span>
+							${prov ? `<span>${prov}</span>` : ''}
+							<span>${tag3}</span>
 						</div>
 						<div class="archive-lawyer-meta">
 							<p><span class="material-symbols-outlined">history_edu</span>${escapeHtml(item.experience || '—')}</p>
-							<p><span class="material-symbols-outlined">location_on</span>${escapeHtml(item.city || '—')}</p>
+							<p><span class="material-symbols-outlined">location_on</span>${loc}</p>
 						</div>
 					</div>
 				</div>
@@ -726,7 +862,8 @@ get_header();
 					</div>
 				</div>
 			</article>
-		`).join('');
+		`;
+		}).join('');
 		resultsList.innerHTML = html;
 	}
 
@@ -760,14 +897,18 @@ get_header();
 		const q = qTrim.length >= 2 ? qTrim : '';
 		const selectedCity = citySelect?.value?.trim() || '';
 		const selectedSpecialty = specialtySelect?.value?.trim() || '';
+		const selectedProvince = provinceSelect?.value?.trim() || '';
 		const citySlugs = getCheckedValues('city_term[]');
 		const specialtySlugs = getCheckedValues('specialty[]');
+		const provinceSlugs = getCheckedValues('province_term[]');
 
 		const mergedCitySlugs = Array.from(new Set([...citySlugs, ...(selectedCity ? [selectedCity] : [])]));
 		const mergedSpecialtySlugs = Array.from(new Set([...specialtySlugs, ...(selectedSpecialty ? [selectedSpecialty] : [])]));
+		const mergedProvinceSlugs = Array.from(new Set([...provinceSlugs, ...(selectedProvince ? [selectedProvince] : [])]));
 
 		const params = new URLSearchParams({ per_page: String(ARCHIVE_PER_PAGE), page: String(page) });
 		if (q) params.set('q', q);
+		if (mergedProvinceSlugs.length) params.set('province_term', mergedProvinceSlugs.join(','));
 		if (mergedCitySlugs.length) params.set('city_term', mergedCitySlugs.join(','));
 		if (mergedSpecialtySlugs.length) params.set('specialty', mergedSpecialtySlugs.join(','));
 
@@ -797,6 +938,7 @@ get_header();
 			renderArchivePagination(archiveCurrentPage, archiveTotalPages);
 			updateArchiveUrlState({
 				q,
+				provinceSlugs: mergedProvinceSlugs,
 				citySlugs: mergedCitySlugs,
 				specialtySlugs: mergedSpecialtySlugs,
 				page: archiveCurrentPage,
@@ -832,7 +974,7 @@ get_header();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	});
 
-	document.querySelectorAll('#archive-filters-panel input[name="city_term[]"], #archive-filters-panel input[name="specialty[]"]').forEach((el) => {
+	document.querySelectorAll('#archive-filters-panel input[name="city_term[]"], #archive-filters-panel input[name="specialty[]"], #archive-filters-panel input[name="province_term[]"]').forEach((el) => {
 		el.addEventListener('change', syncTopFiltersFromSidebar);
 	});
 
@@ -895,6 +1037,10 @@ get_header();
 		document.querySelectorAll('#archive-filters-panel input[name="city_term[]"]').forEach((box) => {
 			box.checked = cv !== '' && box.value === cv;
 		});
+		const pv = provinceSelect?.value?.trim() || '';
+		document.querySelectorAll('#archive-filters-panel input[name="province_term[]"]').forEach((box) => {
+			box.checked = pv !== '' && box.value === pv;
+		});
 	}
 
 	/**
@@ -904,8 +1050,10 @@ get_header();
 	function initArchiveFiltersFromPageState() {
 		const urlSpec = getQuerySlugList('specialty')[0] || '';
 		const urlCity = getQuerySlugList('city_term')[0] || '';
+		const urlProv = getQuerySlugList('province_term')[0] || '';
 		const firstSpec = urlSpec || (archiveInitialSlugs && archiveInitialSlugs.specialty) || '';
 		const firstCity = urlCity || (archiveInitialSlugs && archiveInitialSlugs.city_term) || '';
+		const firstProv = urlProv || (archiveInitialSlugs && archiveInitialSlugs.province_term) || '';
 
 		if (specialtySelect && firstSpec) {
 			const opt = archiveSelectOptionForSlug(specialtySelect, firstSpec);
@@ -929,6 +1077,17 @@ get_header();
 			}
 		}
 
+		if (provinceSelect && firstProv) {
+			const opt = archiveSelectOptionForSlug(provinceSelect, firstProv);
+			if (opt) provinceSelect.value = opt.value;
+		} else if (provinceSelect) {
+			const fromBoxes = getCheckedValues('province_term[]')[0];
+			if (fromBoxes) {
+				const opt = archiveSelectOptionForSlug(provinceSelect, fromBoxes);
+				if (opt) provinceSelect.value = opt.value;
+			}
+		}
+
 		syncSidebarCheckboxesFromTopSelects();
 		syncTopFiltersFromSidebar();
 		updateArchiveActiveFiltersDisplay();
@@ -947,7 +1106,7 @@ get_header();
 	}
 	.archive-search-card .archive-search-grid {
 		display: grid;
-		grid-template-columns: 1.1fr 1.1fr 1.2fr auto;
+		grid-template-columns: 1fr 1fr 1fr 1.1fr auto;
 		gap: 10px;
 		align-items: center;
 	}

@@ -154,7 +154,9 @@ get_header();
 						<?php
 						$initial_query->the_post();
 						$post_id      = get_the_ID();
-						$img          = get_the_post_thumbnail_url( $post_id, 'medium' );
+						$img          = function_exists( 'hovalvakil_lawyer_profile_image_url' )
+							? hovalvakil_lawyer_profile_image_url( $post_id, 'medium' )
+							: (string) get_the_post_thumbnail_url( $post_id, 'medium' );
 						$specialties  = get_the_terms( $post_id, 'hvl_specialty' );
 						$cities       = get_the_terms( $post_id, 'hvl_city' );
 						$spec_names   = [];
