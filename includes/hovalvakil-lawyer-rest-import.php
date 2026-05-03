@@ -23,6 +23,7 @@
  *       "specialties": ["حقوق-خانواده"],
  *       "featured_image_url": "https://...",
  *       "featured_image_filename": "نام-وکیل-بدون-پسوند",
+ *       "featured_attachment_id": 12345,
  *       "hvl_mobile": "...",
  *       "...": "یا همه meta با پیشوند hvl_ در ریشه آبجکت"
  *     }
@@ -404,9 +405,25 @@ function hovalvakil_rest_post_lawyers_batch( WP_REST_Request $request ) {
 
 		hovalvakil_import_apply_lawyer_meta( $post_id, $raw_item );
 
-		// Remote photo: either sideload as thumbnail or store URL only.
-		$img_url = isset( $raw_item['featured_image_url'] ) ? esc_url_raw( trim( (string) $raw_item['featured_image_url'] ) ) : '';
-		if ( '' !== $img_url ) {
+		// Featured image: existing attachment (e.g. uploaded via wp/v2/media from import client), sideload from URL, or URL meta only.
+		$att_id_in = isset( $raw_item['featured_attachment_id'] ) ? absint( $raw_item['featured_attachment_id'] ) : 0;
+		$img_url   = isset( $raw_item['featured_image_url'] ) ? esc_url_raw( trim( (string) $raw_item['featured_image_url'] ) ) : '';
+
+		if ( $att_id_in > 0 ) {
+			if ( ! wp_attachment_is_image( $att_id_in ) ) {
+				$errors[] = [
+					'index'   => $index,
+					'message' => 'featured_attachment_id یک فایل تصویری معتبر نیست.',
+				];
+			} elseif ( ! current_user_can( 'edit_post', $att_id_in ) ) {
+				$errors[] = [
+					'index'   => $index,
+					'message' => 'کاربر فعلی اجازهٔ استفاده از این پیوست را ندارد.',
+				];
+			} else {
+				set_post_thumbnail( $post_id, $att_id_in );
+			}
+		} elseif ( '' !== $img_url ) {
 			if ( $sideload ) {
 				$img_stem = isset( $raw_item['featured_image_filename'] ) ? sanitize_text_field( (string) $raw_item['featured_image_filename'] ) : '';
 				$sd       = hovalvakil_import_sideload_featured( $post_id, $img_url, $img_stem );

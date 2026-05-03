@@ -6,4 +6,5 @@ run-*-*/
 # Import runner state (resume, failures)
 tools/.import_state.json
 tools/import_failed.jsonl
+tools/import_run.log
 tools/__pycache__/

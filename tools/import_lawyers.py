@@ -3,30 +3,22 @@
 Import lawyers from bot scrape (checkpoint.json) into WordPress using:
   POST {WP_BASE}/wp-json/hovalvakil/v1/lawyers/batch
 
-Why a local HTTP server: WordPress sideload uses download_url(URL). Local file paths
-are not fetched; serving the scrape folder over http://127.0.0.1:PORT lets sideload work
-when WordPress runs on the same machine (or can reach that host).
+Images (default ``--image-mode rest_media``):
+  Each ``profile.webp`` is uploaded from your PC with ``POST /wp-json/wp/v2/media``, then the
+  batch item sends ``featured_attachment_id`` so the **remote** server never has to fetch
+  ``http://127.0.0.1/...`` (that always failed with «نشانی معتبر نیست»).
+
+Optional ``--image-mode sideload_url``: starts a local HTTP server so WordPress can
+  ``download_url`` only if the server can reach that URL (same machine / tunnel).
 
 Setup:
   pip install -r tools/requirements.txt
 
-Example (dry run, first 100):
-  python tools/import_lawyers.py --wp-base https://yoursite.test --wp-user admin \\
-    --wp-app-password xxxx --dry-run --limit 100
+Example:
+  python tools/import_lawyers.py --wp-base https://example.com --wp-user USER \\
+    --wp-app-password xxxx --log-file tools/import_run.log --limit 5
 
-Overnight full import (resume enabled by default):
-  python tools/import_lawyers.py --wp-base https://yoursite.test --wp-user admin \\
-    --wp-app-password xxxx
-
-State: tools/.import_state.json (completed external_ids)
-Failures: tools/import_failed.jsonl (append-only; safe to inspect next morning)
-
-Checkpoint parity:
-  All top-level fields from the scrape (names, province/city, contact, license, dates,
-  bar_association, profile_url, source, last_update, status, image_* metadata) are copied
-  into post content, hvl_records, and/or matching post meta. Featured image URL is sent
-  only after verifying ``images/<image_relative_dir>/profile.webp`` exists next to the
-  checkpoint (same bytes the bot saved), so WordPress never sideloads a mismatched path.
+State: tools/.import_state.json | Failures: tools/import_failed.jsonl
 """
 
 from __future__ import annotations
@@ -44,7 +36,7 @@ import urllib.parse
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import requests
 
@@ -61,13 +53,14 @@ MAX_BATCH_RETRIES = 8
 MAX_ITEM_RETRIES = 5
 
 
-def setup_logging(verbose: bool) -> None:
+def setup_logging(verbose: bool, log_file: Path | None) -> None:
     level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s %(message)s",
-        datefmt="%H:%M:%S",
-    )
+    fmt = "%(asctime)s %(levelname)s [import] %(message)s"
+    handlers: List[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    if log_file is not None:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        handlers.append(logging.FileHandler(log_file, encoding="utf-8"))
+    logging.basicConfig(level=level, format=fmt, datefmt="%H:%M:%S", handlers=handlers, force=True)
 
 
 def load_state() -> Dict[str, Any]:
@@ -156,23 +149,68 @@ def lawyer_featured_image_filename(rec: Dict[str, Any], pid: str) -> str:
     return s or f"lawyer-{pid}"
 
 
-def verified_featured_image_url(data_dir: Path, rec: Dict[str, Any], image_host: str) -> str:
-    """
-    Only return URL if the same file the checkpoint names exists under data_dir/images/...
-    (matches on-disk scrape; avoids WordPress sideloading a wrong/404 image).
-    """
+def local_profile_webp_path(data_dir: Path, rec: Dict[str, Any]) -> Path | None:
+    """Return path to profile.webp on disk if scrape says image ok and file exists."""
     if (rec.get("image_status") or "").strip().lower() != "ok":
-        return ""
+        return None
     rel = (rec.get("image_relative_dir") or "").strip().replace("\\", "/").strip("/")
     if not rel:
-        return ""
+        return None
     local = (data_dir / "images" / rel / "profile.webp").resolve()
     try:
-        if not local.is_file():
-            return ""
+        return local if local.is_file() else None
     except OSError:
+        return None
+
+
+def verified_featured_image_url(data_dir: Path, rec: Dict[str, Any], image_host: str) -> str:
+    """HTTP URL for local static server (sideload_url mode only when server can reach this host)."""
+    if local_profile_webp_path(data_dir, rec) is None:
         return ""
-    return image_public_url(image_host, rel)
+    rel = (rec.get("image_relative_dir") or "").strip().replace("\\", "/").strip("/")
+    return image_public_url(image_host, rel) if rel else ""
+
+
+def upload_media_rest_with_retries(
+    session: requests.Session,
+    wp_base: str,
+    file_path: Path,
+    upload_filename: str,
+    timeout: int,
+    log: logging.Logger,
+) -> int | None:
+    """POST file to wp/v2/media; return attachment id or None."""
+    media_url = wp_base.rstrip("/") + "/wp-json/wp/v2/media"
+    for attempt in range(5):
+        try:
+            with open(file_path, "rb") as handle:
+                files = {"file": (upload_filename, handle, "image/webp")}
+                resp = session.post(media_url, files=files, timeout=timeout)
+        except OSError as exc:
+            log.error("[STEP] خواندن فایل تصویر ناموفق: %s — %s", file_path, exc)
+            return None
+        except requests.RequestException as exc:
+            log.warning("[STEP] خطای شبکه در wp/v2/media (تلاش %s/5): %s", attempt + 1, exc)
+            sleep_backoff(attempt)
+            continue
+        if resp.status_code in (429, 500, 502, 503, 504):
+            log.warning("[STEP] wp/v2/media کد HTTP %s (تلاش %s/5)", resp.status_code, attempt + 1)
+            sleep_backoff(attempt)
+            continue
+        if not resp.ok:
+            log.warning("[STEP] wp/v2/media رد شد: %s — %s", resp.status_code, (resp.text or "")[:500])
+            return None
+        try:
+            data = resp.json()
+        except ValueError:
+            log.warning("[STEP] wp/v2/media پاسخ JSON نبود")
+            return None
+        mid = int(data.get("id") or 0)
+        if mid > 0:
+            return mid
+        log.warning("[STEP] wp/v2/media بدون id در پاسخ: %s", data)
+        return None
+    return None
 
 
 def record_to_payload(
@@ -180,7 +218,9 @@ def record_to_payload(
     rec: Dict[str, Any],
     data_dir: Path,
     image_host: str,
-    sideload: bool,
+    use_sideload_url: bool,
+    featured_attachment_id: int | None = None,
+    include_remote_url_for_meta: bool = False,
 ) -> Dict[str, Any]:
     pid = public_lawyer_id(rec, rid)
     title = (rec.get("full_name") or "").strip()
@@ -250,7 +290,9 @@ def record_to_payload(
     if img_st == "ok" and rec.get("image_folder"):
         records_parts.append("مسیر پوشهٔ تصویر (نسبت به images/): " + str(rec["image_folder"]).strip())
 
-    img_url = verified_featured_image_url(data_dir, rec, image_host)
+    verified_url = ""
+    if use_sideload_url or include_remote_url_for_meta:
+        verified_url = verified_featured_image_url(data_dir, rec, image_host)
 
     def he(s: Any) -> str:
         return html.escape((str(s) if s is not None else "").strip())
@@ -281,10 +323,14 @@ def record_to_payload(
         "city": city,
         "province": province,
         "specialties": [],
-        "featured_image_url": img_url,
     }
-    if img_url:
+    if featured_attachment_id and featured_attachment_id > 0:
+        item["featured_attachment_id"] = int(featured_attachment_id)
+    elif use_sideload_url and verified_url:
+        item["featured_image_url"] = verified_url
         item["featured_image_filename"] = lawyer_featured_image_filename(rec, pid)
+    elif include_remote_url_for_meta and verified_url:
+        item["featured_image_url"] = verified_url
 
     if rec.get("license_no"):
         item["hvl_license_no"] = str(rec["license_no"]).strip()
@@ -320,6 +366,45 @@ def record_to_payload(
         item["hvl_records"] = "\n".join(records_parts)
 
     return item
+
+
+def _build_item_payload(
+    rid: str,
+    rec: Dict[str, Any],
+    data_dir: Path,
+    image_host: str,
+    *,
+    image_mode: str,
+    dry_run: bool,
+    no_sideload: bool,
+    session: requests.Session,
+    wp_base: str,
+    timeout: int,
+    log: logging.Logger,
+) -> Dict[str, Any]:
+    pid = public_lawyer_id(rec, rid)
+    att: int | None = None
+    if image_mode == "rest_media" and not dry_run:
+        lp = local_profile_webp_path(data_dir, rec)
+        if lp is not None:
+            fname = lawyer_featured_image_filename(rec, pid) + ".webp"
+            log.info("[STEP] آپلود تصویر (wp/v2/media) برای id=%s — %s", pid, rec.get("full_name"))
+            att = upload_media_rest_with_retries(session, wp_base, lp, fname, timeout, log)
+            if att:
+                log.info("[STEP] آپلود موفق attachment_id=%s", att)
+            else:
+                log.warning("[STEP] آپلود تصویر ناموفق؛ پست بدون تصویر شاخص ذخیره می‌شود.")
+    use_http_sideload = image_mode == "sideload_url" and not no_sideload
+    include_url_meta = image_mode == "sideload_url" and no_sideload
+    return record_to_payload(
+        rid,
+        rec,
+        data_dir,
+        image_host,
+        use_sideload_url=use_http_sideload,
+        featured_attachment_id=att,
+        include_remote_url_for_meta=include_url_meta,
+    )
 
 
 def post_batch(
@@ -410,9 +495,8 @@ def retry_items_one_by_one(
     session: requests.Session,
     wp_base: str,
     pairs: List[Tuple[str, Dict[str, Any]]],
-    data_dir: Path,
-    image_host: str,
-    sideload: bool,
+    build_payload: Callable[[str, Dict[str, Any]], Dict[str, Any]],
+    batch_sideload: bool,
     dry_run: bool,
     timeout: int,
     done_ids: set,
@@ -423,13 +507,13 @@ def retry_items_one_by_one(
         ext_id = external_id_for(rec, rid)
         if ext_id in done_ids:
             continue
-        payload = record_to_payload(rid, rec, data_dir, image_host, sideload)
+        payload = build_payload(rid, rec)
         ok_final = False
         for t in range(MAX_ITEM_RETRIES):
             if t:
                 sleep_backoff(t)
             try:
-                resp = post_batch(session, wp_base, [payload], dry_run, sideload, timeout)
+                resp = post_batch(session, wp_base, [payload], dry_run, batch_sideload, timeout)
             except requests.RequestException as exc:
                 log.warning("Single-item transport %s attempt %s: %s", rid, t + 1, exc)
                 continue
@@ -497,10 +581,31 @@ def main() -> int:
         action="store_true",
         help="Do not GET wp-json/ before import (only if index is blocked but batch POST works).",
     )
+    ap.add_argument(
+        "--image-mode",
+        choices=("rest_media", "sideload_url", "none"),
+        default="rest_media",
+        help="rest_media=آپلود profile.webp با wp/v2/media از همین PC (پیش‌فرض، برای هاست راه‌دور). "
+        "sideload_url=HTTP محلی تا وردپرس download_url بزند. none=بدون تصویر",
+    )
+    ap.add_argument(
+        "--log-file",
+        type=Path,
+        default=None,
+        help="رونوشت لاگ در این فایل UTF-8 (مثلاً tools/import_run.log)",
+    )
     args = ap.parse_args()
 
-    setup_logging(args.verbose)
+    log_file_resolved = args.log_file.resolve() if args.log_file else None
+    setup_logging(args.verbose, log_file_resolved)
     log = logging.getLogger("import")
+    log.info(
+        "[STEP] شروع — site=%s image-mode=%s dry-run=%s resume=%s",
+        args.wp_base,
+        args.image_mode,
+        args.dry_run,
+        not args.no_resume,
+    )
 
     theme_root = Path(__file__).resolve().parents[1]
     checkpoint = args.checkpoint or (theme_root / "run-20260429-135734" / "checkpoint.json")
@@ -516,11 +621,17 @@ def main() -> int:
     done_ids: set = set(state.get("completed_ids", []))
 
     image_host = args.image_host.strip() or f"http://{args.image_bind}:{args.image_port}"
-    sideload = not args.no_sideload
+    batch_sideload = args.image_mode == "sideload_url" and not args.no_sideload
 
-    log.info("Local file server root=%s public=%s", data_dir, image_host)
-    httpd = run_http_server(data_dir, args.image_bind, args.image_port)
-    time.sleep(0.25)
+    httpd: ThreadingHTTPServer | None = None
+    if args.image_mode == "sideload_url":
+        log.info("[STEP] راه‌اندازی سرور محلی تصاویر root=%s public=%s", data_dir, image_host)
+        httpd = run_http_server(data_dir, args.image_bind, args.image_port)
+        time.sleep(0.25)
+    elif args.image_mode == "rest_media":
+        log.info("[STEP] تصاویر: آپلود مستقیم wp/v2/media از این ماشین (بدون 127.0.0.1 روی سرور)")
+    else:
+        log.info("[STEP] تصاویر غیرفعال (image-mode=none)")
 
     session = requests.Session()
     auth = base64.b64encode(f"{args.wp_user}:{args.wp_app_password}".encode()).decode("ascii")
@@ -540,6 +651,21 @@ def main() -> int:
     keys = list(done_block.keys())
     log.info("done records: %s | failed bucket keys: %s", len(keys), len(data.get("failed") or {}))
 
+    def build_payload(rid: str, rec: Dict[str, Any]) -> Dict[str, Any]:
+        return _build_item_payload(
+            rid,
+            rec,
+            data_dir,
+            image_host,
+            image_mode=args.image_mode,
+            dry_run=args.dry_run,
+            no_sideload=args.no_sideload,
+            session=session,
+            wp_base=args.wp_base,
+            timeout=args.timeout,
+            log=log,
+        )
+
     new_processed = 0
 
     def flush_batch(buf: List[Tuple[str, Dict[str, Any]]]) -> None:
@@ -553,16 +679,17 @@ def main() -> int:
             if not title:
                 log_failed(rid, rec, "empty_title", {})
                 continue
-            payloads.append(record_to_payload(rid, rec, data_dir, image_host, sideload))
+            payloads.append(build_payload(rid, rec))
             valid_pairs.append((rid, rec))
         if not valid_pairs:
             return
 
+        log.info("[STEP] ارسال بچ به lawyers/batch — تعداد=%s sideload_url=%s", len(payloads), batch_sideload)
         retry_singles: List[Tuple[str, Dict[str, Any]]] = []
         batch_ok = False
         for attempt in range(MAX_BATCH_RETRIES):
             try:
-                resp = post_batch(session, args.wp_base, payloads, args.dry_run, sideload, args.timeout)
+                resp = post_batch(session, args.wp_base, payloads, args.dry_run, batch_sideload, args.timeout)
             except requests.RequestException as exc:
                 log.warning("Batch transport error (attempt %s/%s): %s", attempt + 1, MAX_BATCH_RETRIES, exc)
                 sleep_backoff(attempt)
@@ -609,7 +736,7 @@ def main() -> int:
                 if row_ok:
                     done_ids.add(ext_id)
                     if i in err_by_i:
-                        log.warning("Imported %s with notice: %s", rid, err_by_i[i].get("message"))
+                        log.warning("[STEP] وکیل id=%s ذخیره شد با هشدار: %s", rid, err_by_i[i].get("message"))
                 else:
                     retry_singles.append((rid, rec))
 
@@ -618,17 +745,17 @@ def main() -> int:
                 save_state(state)
 
             new_processed += len(valid_pairs)
+            log.info("[STEP] بچ موفق — ایجاد/به‌روزرسانی=%s خطا=%s", len(created) + len(updated), len(errs))
             break
 
         if not batch_ok:
-            log.error("Batch failed after retries — sending %s rows to single-item retry.", len(valid_pairs))
+            log.error("[STEP] بچ بعد از retry ناموفق — تلاش تک‌تک برای %s ردیف.", len(valid_pairs))
             retry_items_one_by_one(
                 session,
                 args.wp_base,
                 valid_pairs,
-                data_dir,
-                image_host,
-                sideload,
+                build_payload,
+                batch_sideload,
                 args.dry_run,
                 args.timeout,
                 done_ids,
@@ -639,14 +766,13 @@ def main() -> int:
             return
 
         if retry_singles:
-            log.info("Batch left %s rows without create/update — single-item retry.", len(retry_singles))
+            log.info("[STEP] %s ردیف بدون create/update — retry تک‌تک.", len(retry_singles))
             retry_items_one_by_one(
                 session,
                 args.wp_base,
                 retry_singles,
-                data_dir,
-                image_host,
-                sideload,
+                build_payload,
+                batch_sideload,
                 args.dry_run,
                 args.timeout,
                 done_ids,
@@ -671,9 +797,10 @@ def main() -> int:
     if buf and (not args.limit or new_processed < args.limit):
         flush_batch(buf)
 
-    httpd.shutdown()
-    log.info("Stopped local image server.")
-    log.info("This run processed (new batches): %s | state=%s | failures=%s", new_processed, STATE_PATH, FAIL_LOG)
+    if httpd is not None:
+        httpd.shutdown()
+        log.info("[STEP] سرور محلی تصاویر متوقف شد.")
+    log.info("[STEP] پایان — پردازش‌شده (شمارش بچ): %s | state=%s | failures=%s", new_processed, STATE_PATH, FAIL_LOG)
     return 0
 
 
