@@ -22,6 +22,7 @@
  *       "province": "tehran-province",
  *       "specialties": ["حقوق-خانواده"],
  *       "featured_image_url": "https://...",
+ *       "featured_image_filename": "نام-وکیل-بدون-پسوند",
  *       "hvl_mobile": "...",
  *       "...": "یا همه meta با پیشوند hvl_ در ریشه آبجکت"
  *     }
@@ -155,11 +156,12 @@ function hovalvakil_import_set_terms( $post_id, $taxonomy, array $term_ids ) {
 /**
  * Sideload remote image as featured thumbnail.
  *
- * @param int    $post_id Post ID.
- * @param string $url     Image URL.
+ * @param int    $post_id        Post ID.
+ * @param string $url            Image URL.
+ * @param string $preferred_stem Optional file base name without extension (e.g. lawyer display name); extension comes from URL.
  * @return int|WP_Error Attachment ID or error.
  */
-function hovalvakil_import_sideload_featured( $post_id, $url ) {
+function hovalvakil_import_sideload_featured( $post_id, $url, $preferred_stem = '' ) {
 	$url = esc_url_raw( trim( (string) $url ) );
 	if ( '' === $url ) {
 		return new WP_Error( 'empty_url', 'Empty image URL' );
@@ -173,13 +175,41 @@ function hovalvakil_import_sideload_featured( $post_id, $url ) {
 	if ( is_wp_error( $tmp ) ) {
 		return $tmp;
 	}
+	$url_path     = (string) wp_parse_url( $url, PHP_URL_PATH );
+	$url_basename = basename( $url_path ?: 'image.jpg' );
+	$ext          = strtolower( (string) pathinfo( $url_basename, PATHINFO_EXTENSION ) );
+	if ( ! preg_match( '/^(jpe?g|png|gif|webp)$/', $ext ) ) {
+		$ext = 'webp';
+	}
+
+	$preferred_stem = trim( (string) $preferred_stem );
+	$preferred_stem = preg_replace( '/\.[^.]+$/', '', $preferred_stem );
+	if ( '' !== $preferred_stem ) {
+		$file_stem = sanitize_file_name( $preferred_stem );
+		if ( '' === $file_stem ) {
+			$file_stem = '';
+		}
+	} else {
+		$file_stem = '';
+	}
+	if ( '' === $file_stem ) {
+		$post = get_post( $post_id );
+		if ( $post && '' !== (string) $post->post_name ) {
+			$file_stem = sanitize_file_name( (string) $post->post_name );
+		}
+	}
+	if ( '' === $file_stem ) {
+		$file_stem = pathinfo( $url_basename, PATHINFO_FILENAME );
+		$file_stem = sanitize_file_name( (string) $file_stem );
+	}
+	if ( '' === $file_stem ) {
+		$file_stem = 'image';
+	}
+
 	$file_array = [
-		'name'     => basename( wp_parse_url( $url, PHP_URL_PATH ) ?: 'image.jpg' ),
+		'name'     => $file_stem . '.' . $ext,
 		'tmp_name' => $tmp,
 	];
-	if ( ! preg_match( '/\.(jpe?g|png|gif|webp)$/i', $file_array['name'] ) ) {
-		$file_array['name'] .= '.jpg';
-	}
 	$att_id = media_handle_sideload( $file_array, $post_id );
 	if ( is_wp_error( $att_id ) ) {
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
@@ -378,7 +408,8 @@ function hovalvakil_rest_post_lawyers_batch( WP_REST_Request $request ) {
 		$img_url = isset( $raw_item['featured_image_url'] ) ? esc_url_raw( trim( (string) $raw_item['featured_image_url'] ) ) : '';
 		if ( '' !== $img_url ) {
 			if ( $sideload ) {
-				$sd = hovalvakil_import_sideload_featured( $post_id, $img_url );
+				$img_stem = isset( $raw_item['featured_image_filename'] ) ? sanitize_text_field( (string) $raw_item['featured_image_filename'] ) : '';
+				$sd       = hovalvakil_import_sideload_featured( $post_id, $img_url, $img_stem );
 				if ( is_wp_error( $sd ) ) {
 					update_post_meta( $post_id, 'hvl_photo_url', $img_url );
 					$errors[] = [

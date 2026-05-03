@@ -1,0 +1,9 @@
+# Local scrape / bulk import payloads (large; not for git)
+run-20260429-135734/
+run-20260429-135734.zip
+run-*-*/
+
+# Import runner state (resume, failures)
+tools/.import_state.json
+tools/import_failed.jsonl
+tools/__pycache__/
