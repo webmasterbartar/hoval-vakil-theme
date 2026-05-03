@@ -1,0 +1,568 @@
+<html dir="rtl" lang="fa">
+
+<head></head>
+
+<body class="text-on-surface">
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="stylesheet" href="style.css">
+    <header class="hero hero-pattern">
+        <div class="container hero-container">
+            <h1 class="hero-title">جستجوی وکیل و مشاوره حقوقی آنلاین</h1>
+            <p class="hero-subtitle">وکیل، تخصص یا مرکز قضایی مورد نظر خود را جستجو کنید</p>
+
+            <div class="search-container">
+                <div class="search-field">
+                    <div class="search-icon-right">
+                        <span class="material-symbols-outlined">location_on</span>
+                    </div>
+                    <select id="home-city-select" class="search-select">
+                        <option value="">شهر خود را انتخاب کنید</option>
+                        <option>تهران</option>
+                        <option>مشهد</option>
+                        <option>اصفهان</option>
+                    </select>
+                    <div class="search-select-arrow">
+                        <span class="material-symbols-outlined">expand_more</span>
+                    </div>
+                </div>
+
+                <div class="search-field">
+                    <div id="home-search-trigger" class="search-icon-right search-icon-variant">
+                        <span class="material-symbols-outlined">search</span>
+                    </div>
+                    <input id="home-search-input" class="search-input" placeholder="نام وکیل، تخصص، مرکز قضایی، خدمت و..." type="text" />
+                </div>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-value">۶۰,۰۰۰+</span>
+                    <span class="stat-label">وکیل</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item stat-item-border-mobile">
+                    <span class="stat-value">۲۲,۰۰۰,۰۰۰+</span>
+                    <span class="stat-label">نوبت موفق</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value">۱,۳۰۰+</span>
+                    <span class="stat-label">شهر و روستا</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <span class="filter-label">فیلتر تخصص:</span>
+                    <button class="filter-btn active">
+                        <span class="material-symbols-outlined">apps</span>
+                        همه
+                    </button>
+                    <button class="filter-btn">حقوق خانواده</button>
+                    <button class="filter-btn">حقوق کیفری</button>
+                    <button class="filter-btn">حقوق بین‌الملل</button>
+                    <button class="filter-btn">حقوق تجاری</button>
+                </div>
+            </div>
+            <!-- Lawyer Grid -->
+            <div class="lawyer-grid">
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDX3XZA64kEVvexPD73m9w9gqoHyJXFzNgPQKH_LCvYdZUzEON_ItrKF5Qv0hWynhPTyUBZN6xHJruBFRSSbDuH7mVqeli3Bkmsy97nyIACYOE_-81_AVPJORPvV46jYntjl2nV0gpfKDKTzsCjz-_qfrmWP4MysgJvBvTg4WcksYNNsWiYLvbwOwqG79FwDFQBEAvRRhogw7IyP6WeqhiESkVc42Y88kKVUNIWS8A3fg7_SglqHKAQP6aNzsn8Ks3oUorevZxetiCw" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">جولین استرلینگ</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق بین‌الملل و تجارت</p>
+                        <p class="text-secondary font-bold text-xs mb-6">تهران</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqicYIcDttNvO5ZchWm0uznrhKbk6ZnRoGedUHSQZ1pPwh6kxT0Q94Yboy7DWrKDjEyUHk1oERnuKHQxyiVgPUhqOxYYYBCmv-64OdbgVwPelKURNz0NagWT1Sit6_HUAATMk1bBnd37SomzG9RxAqnxf89CNvyo0ODsI38pdqYbsInzFkFQXbuY_ydEU7X2QOoXUD44b5kEtQTVOuYUJbZki8edE2aCRlPbgGI57UREN5DWukS6BWzNtBqOvdeeFxdsLEaoR-drDS" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">امیر پارسا</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">وکیل پایه یک، جرایم اقتصادی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">شیراز</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-kr8mh0p8oTVpFmmMW8Tepi-Q6MwsGGK5ms3_JVBSNInimdeJNcOWZ0g0U-QNcOYi5knZ1HBZt0oEcIFysuQeMLsufAJNzHiCqsRwMM86enVhiNcdcr94Gj0Jj6wULUNS4iJ4dXBwQZL-Ka3PVzBsWMdgTpycWePdUbrm3gblP6BgkOczOTJuElHomwcV4no2JTydH_gqJnJKdxzgfWA-p09OIMzM3PlpYMJAtMZSy_9SvqDm0Gc1Wk73Z97gfx-gT8q77_1I3PSX" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">سارا رادمان</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق خانواده</p>
+                        <p class="text-secondary font-bold text-xs mb-6">مشهد</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOWi869cLij2Q1QYKesKOiuCNo-PKn0PLoEYmtDxnVDNfj_s_9GQ7X-QmYJtVr6p89LSrs1nbaIEcytT1OPVY1VlCwv9e5IXOyLjC5OtsaGk2TbEKO5C8SbMaufMrujdSY0L3ykjtLokBw7lBiJ5eGnIrLly2ItXs6sKLklijC-uBBFBVgx0JKcN78sIDuwMgkbwWysdMatT8jebiLENJVxdtZLjr7cVcOmLaUySffOsa-cQ64MvlhOIwFQkUDZBADSZ-72kB4cGVM" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">علیرضا فرهمند</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص دعاوی ملکی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">کرج</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9m9fQIqOifn79ylghZnBTrmPK1f_cQ7CccSaBgmHA1Z_MiOUKXIaz_H8yszzFPtFqF6RFjYuvAnmcDid4BJn-vxSx4ML7gArpSWs81yMnhl2dv1kYYSBHvbSVR-udFDAyFh7GfQVm54BtVUaHhP-09cy6R9p4Bv1KUnnRcG1iGlQUcMhNuWA6wFaEFrnLKKrN4ixvccGaqYfaLgDABrVLVXQ2mhjZsKx5E8CaUefy9ciNI-1vopLGNqmTFOa2yNWKHEe7_P3f6lAe" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">رضا ناصری</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق ثبتی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">اصفهان</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt9MEd78am7s7ScM6wlef-UT0qomFEUcUxoy3Dvg-Jun9bbBACnYdkpzWBfRLyp4a_QfWFR7MXDCb0cyFruvSJHL4S63YZnBo0LPsHoqkA9i3gEx7NOI4BndQDjaWsPcKbq0oNokIINYQbGcK2jx8IrcpmLSYkj5Bo9SsPf0WFs-sjjgknvPkBgWl6heO6JYiulUx_g4Je3flE7FGa6cDgL2NPWfEuqU_YDko8HdjF0bhCspf8umtegUoCHC0Ie2IdihPWfx6XX5nv" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">مریم کریمی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">وکیل دعاوی کار و تامین اجتماعی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">تبریز</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIWRhE6pd2ZETEXlIUYMntrm_63ZlvuXY_dU_x8UucJRIYUGYbqjKf48N6eaB8HZXEWtJii_uEoM3dqkdrS8xcnehd913VJS0Tx7yhYzu6QkyI1iiOOplPDadvXZGJVQBmaK9x-mrdBSrrSA9eCwFvPejwZKAfPqJan_eeDT-02ckpKpEKhcwJvkhfFEZxSgIbbZvZ5W4Jdn7b5skI11Acej2JQVkEgqoipersXHwnUO2Ps0IA_8Y2Sngmlg8F3d402hv0bp6mvq9H" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">سعید احمدی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق کیفری و جنایی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">قم</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1gQ0CfcWpZO3TTWdtzwjJyhuVJ8hk-8nGIKpsd1qN68wIO-QwtuLcVUNnvUb2jH_bhuAwBbK6diw2w4OhlvARCbdp5pnKdvYh6smxgFh6UhAJl-rN9nNsJjKV4Qb-KMZz7LyBRZWT3dmT9yFKi5MXJD1y8xwse8Twmw-DTDYkkZoPoAU5IHAjhPmOZZ5FQkcFxPH7l7qhgD30UENXXQNStengzC-Vi6W9zN5v5wtHQR5lJtAZsWWJoHv8JZNCMLKxIj_XNVCUMLuk" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">نیلوفر عباسی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق شرکت‌ها</p>
+                        <p class="text-secondary font-bold text-xs mb-6">اهواز</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYP8Zui6ei45L3BafFManGnmR2lRk2XZTi5ai_CoFZp7CDqp7nCT_q2OkfVnZRAz_fCx69ahrX-oZVEq0CKlVFVUvh2QEkumqGQNzfYSbH6-u-CjJ0WluQ6nT9DLVaunjuyoJEsPfUokxPhqa3BbHRzLzT-aSbKqc4VhvqP2WQgprNcYY9-ujTC_kUn6EXRtRc8NN3AYitrJgWm8IBxX1P6PYe49x72LAOrKCGLdhrcFgzzuKxK6GNIxcsyCD9sMwKalwr78H6Lm-w" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">پرهام رستمی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">وکیل پایه یک، دعاوی بانکی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">رشت</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBU75NSo688mvN9Esp7bc3pnglm15dGnSQ8GA8W8ke0MHz8eO-vWw79wsu2oLImndx-urgBInXcGNWXQ-9Z3MOokjosDwVwvNxu-69rNk1_mTPzDA_HerTl5wqABErB4IWDWqgxCbfkHz8ot2e5ytsb4auQpvV3Ho4t8lom2qSma8YHurZIJRMN_KgPxvmZFoj4ZM5uQm_QuBII4ZyZk_U51E_diWw51nsFxyA95r4hg7uYRv1JYMxDNxm4qNNquV6OqxYczn1MKmnl" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">حسین داوودی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق ارث و انحصار وراثت</p>
+                        <p class="text-secondary font-bold text-xs mb-6">یزد</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI9HAGUqz7GujmQ7wHTaPYVL--2RDoyFY-k8FWIiXzBTEZkzHnyuXR6u5ALzsTdA2C2iN7X6HpLxzpgbzJaxKv8CsSQBoF-kEYNEWihkvBdQonELs6Ogy9vb58ymCEBGJwt78E6H39X9jOPFKXxooCS6T4WS-mcmGsxlBNSBZh9_61NTQZAaBuE1tCGfJqjJyphQWw5bGQxALunXwgkR-y5V8Sro6hU1QespHQyLFBdAbNQyOV0rlE-oxLkOFVRbsaDIeG3CvA5eXX" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">فاطمه یوسفی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق بین‌الملل عمومی</p>
+                        <p class="text-secondary font-bold text-xs mb-6">کرمانشاه</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwnU7ZQrMEBUZi2yglUp0WraM8woq7xtWhAt5iRJWBl7mQVbyoIs4Qpx8VzKHILCx4k4I9Wi2M9MaDARoovjN_SVARjSLn8F7gMI5NhMYjLv5TOondxa01mARGmuDnohph0QQQCrJ6zZD19d-i9xvmLUJRIUVek_hdp12hoGcMYsRY5NpaxPhYXmVfy2KwBAwyG1_E8iSxe1u51UkvwmMx2YbQAQhJhDehuTzMVT8xA7w_O8XSqWX-j889tDkzj7BBfc3WCj1ifXOd" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">کیوان مرادی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">وکیل دعاوی مدنی و تجاری</p>
+                        <p class="text-secondary font-bold text-xs mb-6">ارومیه</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD90Xp_87fH7C6I-k8U97jV0i7L60y_mQxZJ8v4M2x_n59_m6_d_6_0_q_0_0_0_0" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">الناز باقری</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق مالکیت فکری</p>
+                        <p class="text-secondary font-bold text-xs mb-6">تهران</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <!-- Card 14 -->
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcghpVrU-MFZU-a6X88GSLUWnXrNcIGnVry__axigaq_JoX43vpbFBlaor-LBgHDqlMHbW6KnRvCurCZtAfmOmTXVs_StiV12gKBEfFNeVi8RONPMaVmXiOOIJ_HmY5wSUVELbx-Z6OXfrZvoMOiA3CcmRQ4ZPxMtEh8aoMntTqXwlwfizVoW4_wbD0hlk9gLUV_WPlRNZojaOXqFhSR69k5kV17jhMbfqg9W1Om9Co-No5h-TamRjX2P9f0WgqkSvsNe0WHhRSmy_" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">عماد قادری</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">وکیل دعاوی پیمانکاری</p>
+                        <p class="text-secondary font-bold text-xs mb-6">مشهد</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <!-- Card 15 -->
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8ddZ2Tc5GbuIkwj-L4gHBYU4YX_0pH7O4UEvkB5cjnOB0peG0GY3K9V8uHDXwABmR12OlQgJoUpEz0mM_TCJ_n2nxs9CHdGKv1WUVBa9G3lB090df1aSkNLbBTEBHv3dD_k5iL06BnooZZUkbEqQyDk2bwdr76mziPbyGqSZUIHQuW-DNjWxQ3kM_jFmeLNkuYod4Va-_AETNnutpWizxEf1hLyAmRUJS4CS3lgqy1ssWdITw5yURIlrDJD5RYF3xdRgurPKsWjtl" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">آتنا منصوری</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">متخصص حقوق مهاجرت</p>
+                        <p class="text-secondary font-bold text-xs mb-6">شیراز</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+                <!-- Card 16 -->
+                <div class="lawyer-card ghost-border editorial-shadow">
+                    <div class="lawyer-card-image-wrapper">
+                        <img class="lawyer-card-image"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBh1IZJh_Xd1tLBNqGJOFgwI3nJjdtuG64hb6aRSihlQsnvBVkZzSIqcaa5rD-TkdzeoNruh8NR1eEfr4sYaya3NhP3Zc-GWfh3m5LYKJ9oziqU-tdYfUjj4wEYIH-gqCDuMu2GEuI_PdyJMDLe2ry5wUNhYap7BjLcTrtnvixjSk3jaoibFF75OtGu-z4BNif_2zwtG_8h26QxQhXOFsTahRJpjSUot3VuzoEm9JpfOhOtc4n1lVOAZRrKhajX-deOafSMf4V3k7A3" />
+                    </div>
+                    <div class="lawyer-card-content">
+                        <h3 class="lawyer-name">سامان کیانی</h3>
+                        <p class="text-on-surface-variant text-sm mb-1">وکیل دعاوی چک و اسناد تجاری</p>
+                        <p class="text-secondary font-bold text-xs mb-6">کرج</p>
+                        <a href="profil.html" class="btn-primary-full">مشاهده پروفایل</a>
+                    </div>
+                </div>
+            </div>
+            <div class="load-more-wrapper">
+                <button id="home-load-more-btn" class="btn-load-more">مشاهده وکلای بیشتر</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Specialty Categories -->
+    <section class="specialties py-24 bg-surface px-6">
+        <div class="container text-right">
+            <div class="section-header mb-12">
+                <h2 class="text-3xl font-bold text-primary mb-2">تخصص‌های کلیدی</h2>
+                <p class="text-on-surface-variant">انتخاب هوشمندانه بر اساس نیاز حقوقی شما</p>
+            </div>
+            <div class="specialty-grid">
+                <!-- Category 1 -->
+                <div class="category-card ghost-border">
+                    <div class="category-icon-wrapper">
+                        <span class="material-symbols-outlined text-primary text-3xl">family_restroom</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-primary mb-2">حقوق خانواده</h3>
+                    <p class="text-sm text-on-surface-variant">طلاق، مهریه، حضانت فرزند</p>
+                </div>
+                <!-- Category 2 -->
+                <div class="category-card ghost-border">
+                    <div class="category-icon-wrapper">
+                        <span class="material-symbols-outlined text-primary text-3xl">gavel</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-primary mb-2">حقوق کیفری</h3>
+                    <p class="text-sm text-on-surface-variant">دفاع جنایی، کلاهبرداری، سرقت</p>
+                </div>
+                <!-- Category 3 -->
+                <div class="category-card ghost-border">
+                    <div class="category-icon-wrapper">
+                        <span class="material-symbols-outlined text-primary text-3xl">apartment</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-primary mb-2">حقوق ملکی</h3>
+                    <p class="text-sm text-on-surface-variant">خرید و فروش، اجاره، سند</p>
+                </div>
+                <!-- Category 4 -->
+                <div class="category-card ghost-border">
+                    <div class="category-icon-wrapper">
+                        <span class="material-symbols-outlined text-primary text-3xl">business_center</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-primary mb-2">حقوق تجاری</h3>
+                    <p class="text-sm text-on-surface-variant">قراردادها، ثبت شرکت، مالیات</p>
+                </div>
+                <!-- Category 5 -->
+                <div class="category-card ghost-border">
+                    <div class="category-icon-wrapper">
+                        <span class="material-symbols-outlined text-primary text-3xl">account_balance</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-primary mb-2">حقوق ثبتی</h3>
+                    <p class="text-sm text-on-surface-variant">ثبت شرکت، علائم تجاری، انحصار وراثت</p>
+                </div>
+                <!-- Category 6 -->
+                <div class="category-card ghost-border">
+                    <div class="category-icon-wrapper">
+                        <span class="material-symbols-outlined text-primary text-3xl">public</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-primary mb-2">حقوق بین‌الملل</h3>
+                    <p class="text-sm text-on-surface-variant">قراردادهای خارجی، مهاجرت</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="cities">
+        <div class="container">
+            <div class="section-header city-section-header">
+                <h2 class="text-2xl font-bold text-primary">جستجو بر اساس شهر</h2>
+                <a class="text-primary font-bold text-sm" href="#">
+                    مشاهده همه
+                    <span class="material-symbols-outlined text-lg">chevron_left</span>
+                </a>
+            </div>
+            <div class="city-grid">
+                <!-- Tehran -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">تهران</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Mashhad -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">مشهد</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Isfahan -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">اصفهان</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Shiraz -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">شیراز</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Karaj -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">کرج</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Qom -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">قم</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Ahvaz -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">اهواز</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Tabriz -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">تبریز</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Kermanshah -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">کرمانشاه</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Rasht -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">رشت</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Zahedan -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">زاهدان</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Hamadan -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">همدان</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Kerman -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">کرمان</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Yazd -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">یزد</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+                <!-- Ardabil -->
+                <div class="city-card">
+                    <div class="city-card-header">
+                        <div class="city-link-header">
+                            <span class="material-symbols-outlined text-primary">location_on</span>
+                            <span class="font-bold text-primary">اردبیل</span>
+                        </div>
+                        <span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant">مشاهده وکلای فعال</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Give each lawyer card a unique profile URL with card data
+        const lawyerCards = document.querySelectorAll('.lawyer-grid .lawyer-card');
+        lawyerCards.forEach((card, index) => {
+            const link = card.querySelector('.btn-primary-full');
+            const name = card.querySelector('.lawyer-name')?.textContent?.trim() || '';
+            const specialty = card.querySelector('.text-on-surface-variant')?.textContent?.trim() || '';
+            const city = card.querySelector('.text-secondary')?.textContent?.trim() || '';
+            const image = card.querySelector('.lawyer-card-image')?.getAttribute('src') || '';
+
+            const params = new URLSearchParams({
+                id: String(index + 1),
+                name,
+                specialty,
+                city,
+                image
+            });
+
+            if (link) {
+                link.setAttribute('href', `profil.html?${params.toString()}`);
+            }
+        });
+
+        // Go to archive on search or "view more"
+        const homeCitySelect = document.getElementById('home-city-select');
+        const homeSearchInput = document.getElementById('home-search-input');
+        const homeSearchTrigger = document.getElementById('home-search-trigger');
+        const homeLoadMoreBtn = document.getElementById('home-load-more-btn');
+
+        function goToArchive() {
+            const archiveParams = new URLSearchParams();
+            const city = homeCitySelect?.value?.trim() || '';
+            const query = homeSearchInput?.value?.trim() || '';
+
+            if (city) archiveParams.set('city', city);
+            if (query) archiveParams.set('q', query);
+
+            const targetUrl = archiveParams.toString() ? `arshive.html?${archiveParams.toString()}` : 'arshive.html';
+            window.location.href = targetUrl;
+        }
+
+        homeSearchInput?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                goToArchive();
+            }
+        });
+
+        homeSearchTrigger?.addEventListener('click', goToArchive);
+        homeLoadMoreBtn?.addEventListener('click', goToArchive);
+    </script>
+</body>
+
+</html>

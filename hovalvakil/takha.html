@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>هولوکیل | تخصص‌های حقوقی</title>
+    <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="takha-page text-on-surface">
+    <header class="takha-hero">
+        <div class="container takha-hero-content">
+            <div class="takha-breadcrumb"><span>خانه</span><span>←</span><span>تخصص‌ها</span></div>
+            <h1>تخصص‌های حقوقی</h1>
+            <div class="takha-search">
+                <span class="material-symbols-outlined">search</span>
+                <input id="takha-search-input" type="text" placeholder="جستجو در تخصص‌ها..."/>
+            </div>
+        </div>
+    </header>
+
+    <section class="takha-stats container">
+        <div class="takha-stat-card"><strong>۱۲۴</strong><span>تخصص حقوقی</span></div>
+        <div class="takha-stat-card"><strong>۵۰۰۰+</strong><span>وکیل متخصص</span></div>
+        <div class="takha-stat-card"><strong>۲۰۰+</strong><span>شهر پوشش‌داده‌شده</span></div>
+        <div class="takha-stat-card"><strong>۱۰۰,۰۰۰+</strong><span>مشاوره موفق</span></div>
+    </section>
+
+    <section class="takha-specialties container">
+        <div class="takha-specialties-head">
+            <h2>همه تخصص‌های حقوقی</h2>
+            <div class="takha-tabs">
+                <button class="active">همه</button>
+                <button>پرطرفدار</button>
+                <button>کیفری</button>
+                <button>خانواده</button>
+            </div>
+        </div>
+        <div id="takha-specialties-grid" class="takha-grid"></div>
+    </section>
+
+    <script>
+        const specialties = [
+            { title: 'کیفری', desc: 'دفاع در اتهامات کیفری، سرقت و کلاهبرداری', icon: 'gavel', lawyers: '۱۲۴ وکیل' },
+            { title: 'خانواده', desc: 'طلاق، مهریه، نفقه و حضانت فرزندان', icon: 'family_restroom', lawyers: '۳۱۰ وکیل' },
+            { title: 'ملکی', desc: 'خرید و فروش، اجاره و دعاوی ثبتی املاک', icon: 'home_work', lawyers: '۱۵۶ وکیل' },
+            { title: 'تجاری', desc: 'حقوق شرکت‌ها و قراردادهای صنعتی', icon: 'business_center', lawyers: '۸۹ وکیل' },
+            { title: 'قراردادها', desc: 'تنظیم و بررسی انواع قراردادهای رسمی', icon: 'contract', lawyers: '۲۰۰ وکیل' },
+            { title: 'مالیاتی', desc: 'مشاوره مالیاتی و دفاع در هیئت‌های حل اختلاف', icon: 'account_balance_wallet', lawyers: '۸۲ وکیل' }
+        ];
+
+        const grid = document.getElementById('takha-specialties-grid');
+        grid.innerHTML = specialties.map(s => `
+            <article class="takha-card">
+                <div class="takha-card-icon"><span class="material-symbols-outlined">${s.icon}</span></div>
+                <h3>${s.title}</h3>
+                <p>${s.desc}</p>
+                <div class="takha-card-footer">
+                    <span>${s.lawyers}</span>
+                    <a href="arshive.html?q=${encodeURIComponent(s.title)}">مشاهده وکلا</a>
+                </div>
+            </article>
+        `).join('');
+
+        const takhaSearchInput = document.getElementById('takha-search-input');
+        takhaSearchInput?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                const q = takhaSearchInput.value.trim();
+                window.location.href = q ? `arshive.html?q=${encodeURIComponent(q)}` : 'arshive.html';
+            }
+        });
+    </script>
+</body>
+</html>

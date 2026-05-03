@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="fa"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100;300;400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#0b1627",
+                    "secondary-container": "#fed977",
+                    "surface-container-high": "#e7e8ec",
+                    "secondary": "#755b00",
+                    "tertiary-container": "#202b3c",
+                    "on-tertiary": "#ffffff",
+                    "inverse-surface": "#2e3134",
+                    "on-tertiary-fixed-variant": "#3c475a",
+                    "on-tertiary-container": "#8792a7",
+                    "outline": "#75777f",
+                    "on-secondary-container": "#785d00",
+                    "surface-container-low": "#f2f3f7",
+                    "primary": "#041534",
+                    "error": "#ba1a1a",
+                    "surface": "#f8f9fd",
+                    "on-background": "#191c1f",
+                    "secondary-fixed": "#ffe08f",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed": "#111c2c",
+                    "on-surface-variant": "#45464e",
+                    "surface-bright": "#f8f9fd",
+                    "primary-fixed-dim": "#b7c6ee",
+                    "on-secondary-fixed-variant": "#584400",
+                    "on-primary-container": "#8392b7",
+                    "primary-fixed": "#d9e2ff",
+                    "on-secondary-fixed": "#241a00",
+                    "inverse-on-surface": "#eff1f5",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#191c1f",
+                    "on-error": "#ffffff",
+                    "primary-container": "#1b2a4a",
+                    "on-error-container": "#93000a",
+                    "outline-variant": "#c5c6cf",
+                    "on-primary-fixed": "#0a1a3a",
+                    "surface-container-highest": "#e1e2e6",
+                    "background": "#f8f9fd",
+                    "tertiary-fixed": "#d8e3fa",
+                    "secondary-fixed-dim": "#e6c364",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#d9dade",
+                    "tertiary-fixed-dim": "#bcc7dd",
+                    "surface-variant": "#e1e2e6",
+                    "surface-container": "#edeef2",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#384668",
+                    "inverse-primary": "#b7c6ee",
+                    "surface-tint": "#4f5e81"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Vazirmatn", "sans-serif"],
+                    "body": ["Vazirmatn", "sans-serif"],
+                    "label": ["Vazirmatn", "sans-serif"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Vazirmatn', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- Top Navigation Bar -->
+<nav class="fixed top-0 w-full z-50 bg-[#041534]/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-[0_4px_32px_rgba(4,21,52,0.05)]">
+<div class="flex flex-row-reverse items-center justify-between px-8 py-4 max-w-full mx-auto w-full">
+<div class="flex items-center gap-2">
+<span class="text-2xl font-bold text-[#C9A84C] dark:text-[#ffe08f]">هولوکیل</span>
+<span class="material-symbols-outlined text-[#C9A84C]" data-icon="balance">balance</span>
+</div>
+<div class="hidden md:flex flex-row-reverse items-center gap-8">
+<a class="text-[#C9A84C] border-b-2 border-[#C9A84C] pb-1 font-['Vazirmatn'] text-base leading-relaxed tracking-tight" href="#">خانه</a>
+<a class="text-slate-300 dark:text-slate-400 hover:text-white transition-colors duration-300 font-['Vazirmatn'] text-base leading-relaxed tracking-tight" href="#">درباره ما</a>
+<a class="text-slate-300 dark:text-slate-400 hover:text-white transition-colors duration-300 font-['Vazirmatn'] text-base leading-relaxed tracking-tight" href="#">خدمات</a>
+<a class="text-slate-300 dark:text-slate-400 hover:text-white transition-colors duration-300 font-['Vazirmatn'] text-base leading-relaxed tracking-tight" href="#">وبلاگ</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-[#C9A84C] text-primary px-6 py-2 rounded-lg font-bold scale-95 active:opacity-80 transition-transform">استخدام وکیل</button>
+<div class="flex gap-2 text-white">
+<span class="material-symbols-outlined cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined cursor-pointer" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area (Placeholder) -->
+<main class="pt-32 pb-20 px-8 min-h-screen">
+<div class="max-w-7xl mx-auto">
+<section class="mb-16">
+<h1 class="text-4xl md:text-6xl font-black text-primary mb-6 leading-tight">عدالت هوشمند با <span class="text-secondary">هولوکیل</span></h1>
+<p class="text-on-surface-variant text-xl max-w-2xl leading-loose">دسترسی سریع و آسان به مجرب‌ترین وکلای پایه یک دادگستری در سراسر کشور. مشاوره حقوقی آنلاین در کوتاه‌ترین زمان ممکن.</p>
+</section>
+<!-- Bento Grid Layout for Showcase -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-2 bg-surface-container-lowest p-8 rounded-xl shadow-[0_4px_32px_rgba(0,0,0,0.05)] border-outline-variant/10 border group transition-all duration-300 hover:shadow-xl">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="text-2xl font-bold text-primary mb-2">جستجوی وکیل تخصصی</h3>
+<p class="text-on-surface-variant">بر اساس تخصص، منطقه و امتیاز کاربران</p>
+</div>
+<span class="material-symbols-outlined text-secondary text-4xl" data-icon="person_search">person_search</span>
+</div>
+<div class="h-48 bg-surface-container-low rounded-lg overflow-hidden relative">
+<img alt="Legal consulting" class="w-full h-full object-cover opacity-60" data-alt="Close up of a wooden gavel and legal books on a dark desk with professional atmosphere and warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvhPEUhHeR526IJpLc8o1mM8mPs6ojxfJdES3T89VMUML9bheVRl4bCId1D-mBbLlXMIz7P0b9AFedbp7zLt_pJPbLK7OhCsW4LFlGKCpMKiUJnY7nZX2wC0eC5pr2DCbaZBVqCnV3_DxpR5qLHEYrk_s1ICXFVp4CockuDrNkmGLLLlmDXjy_p9g9o95cWw3iS1UONEJKUucHj0DY7_3CGp89VLJzTr_6Gq5PFE-OelQXCxjeJcH5m7neE_cWj6RGvvjPkPf9Y8U"/>
+</div>
+</div>
+<div class="bg-primary-container p-8 rounded-xl text-white flex flex-col justify-between">
+<span class="material-symbols-outlined text-secondary-fixed text-5xl mb-6" data-icon="gavel">gavel</span>
+<div>
+<h3 class="text-2xl font-bold mb-4">بیش از ۱۰،۰۰۰ پرونده موفق</h3>
+<p class="text-on-primary-container text-sm leading-relaxed">تیم وکلای ما با تخصص‌های گوناگون آماده دفاع از حقوق شما در تمامی مراجع قضایی هستند.</p>
+</div>
+<button class="mt-8 text-secondary-fixed border-b border-secondary-fixed w-fit pb-1 hover:translate-x-[-4px] transition-transform">مشاهده افتخارات</button>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0_4px_32px_rgba(0,0,0,0.05)] border-outline-variant/10 border">
+<span class="material-symbols-outlined text-primary mb-4" data-icon="verified_user">verified_user</span>
+<h4 class="font-bold text-lg mb-2">تضمین کیفیت خدمات</h4>
+<p class="text-on-surface-variant text-sm">تمامی وکلا دارای پروانه معتبر از کانون وکلا هستند.</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0_4px_32px_rgba(0,0,0,0.05)] border-outline-variant/10 border">
+<span class="material-symbols-outlined text-primary mb-4" data-icon="support_agent">support_agent</span>
+<h4 class="font-bold text-lg mb-2">پشتیبانی ۲۴ ساعته</h4>
+<p class="text-on-surface-variant text-sm">در تمامی مراحل حقوقی در کنار شما هستیم.</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0_4px_32px_rgba(0,0,0,0.05)] border-outline-variant/10 border">
+<span class="material-symbols-outlined text-primary mb-4" data-icon="lock">lock</span>
+<h4 class="font-bold text-lg mb-2">حفظ محرمانگی</h4>
+<p class="text-on-surface-variant text-sm">امنیت اطلاعات و اسرار شما اولویت ماست.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Component -->
+<footer class="w-full rounded-t-lg bg-[#041534] text-right direction-rtl overflow-hidden">
+<!-- Main Footer Content -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 px-12 py-20">
+<!-- Column 1: Brand & Bio -->
+<div class="flex flex-col gap-6">
+<div class="flex items-center gap-3">
+<span class="text-3xl font-black text-white">هولوکیل</span>
+<span class="material-symbols-outlined text-[#C9A84C] text-3xl" data-icon="scale">scale</span>
+</div>
+<p class="text-slate-400 font-['Vazirmatn'] text-sm font-light leading-7">
+                    سامانه هوشمند جستجو و نوبت‌دهی آنلاین وکلای برتر سراسر کشور. دسترسی به عدالت برای همه در هر زمان و مکان.
+                </p>
+<div class="flex gap-4 mt-4">
+<a class="text-slate-400 hover:text-[#C9A84C] transition-colors duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+</a>
+<a class="text-slate-400 hover:text-[#C9A84C] transition-colors duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="alternate_email">alternate_email</span>
+</a>
+<a class="text-slate-400 hover:text-[#C9A84C] transition-colors duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="public">public</span>
+</a>
+<a class="text-slate-400 hover:text-[#C9A84C] transition-colors duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="rss_feed">rss_feed</span>
+</a>
+</div>
+</div>
+<!-- Column 2: Quick Access -->
+<div class="flex flex-col gap-6">
+<h4 class="text-[#C9A84C] font-bold text-lg">دسترسی سریع</h4>
+<ul class="flex flex-col gap-4">
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">جستجوی وکیل</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">تخصص‌ها</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">مراکز حقوقی</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">مشاوره آنلاین</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">مجله حقوقی</a></li>
+</ul>
+</div>
+<!-- Column 3: About -->
+<div class="flex flex-col gap-6">
+<h4 class="text-[#C9A84C] font-bold text-lg">درباره ما</h4>
+<ul class="flex flex-col gap-4">
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">درباره هولوکیل</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">تماس با ما</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">سوالات متداول</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">قوانین و مقررات</a></li>
+<li><a class="text-slate-400 hover:text-[#C9A84C] hover:translate-x-[-4px] transition-all duration-200 block text-sm" href="#">حریم خصوصی</a></li>
+</ul>
+</div>
+<!-- Column 4: Contact & App -->
+<div class="flex flex-col gap-6">
+<h4 class="text-[#C9A84C] font-bold text-lg">تماس با ما</h4>
+<div class="flex flex-col gap-4 text-sm font-light text-slate-300">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#C9A84C] text-sm" data-icon="phone">phone</span>
+<span>۰۲۱-۱۲۳۴۵۶۷۸</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#C9A84C] text-sm" data-icon="mail">mail</span>
+<span>info@holokeil.ir</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[#C9A84C] text-sm" data-icon="location_on">location_on</span>
+<span>تهران، خیابان ولیعصر</span>
+</div>
+</div>
+<div class="flex flex-col gap-3 mt-4">
+<button class="bg-[#1B2A4A] border border-white/10 hover:border-[#C9A84C] px-4 py-2 rounded flex items-center justify-between transition-colors">
+<div class="text-right">
+<div class="text-[10px] text-slate-400">دریافت از</div>
+<div class="text-xs font-bold text-white">Google Play</div>
+</div>
+<span class="material-symbols-outlined text-white" data-icon="play_arrow">play_arrow</span>
+</button>
+<button class="bg-[#1B2A4A] border border-white/10 hover:border-[#C9A84C] px-4 py-2 rounded flex items-center justify-between transition-colors">
+<div class="text-right">
+<div class="text-[10px] text-slate-400">دریافت از</div>
+<div class="text-xs font-bold text-white">App Store</div>
+</div>
+<span class="material-symbols-outlined text-white" data-icon="apple">ios</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Divider Line -->
+<div class="mx-12 h-px bg-white/10"></div>
+<!-- Bottom Bar -->
+<div class="flex flex-col md:flex-row justify-between items-center px-12 py-8 gap-6">
+<p class="text-slate-400 text-sm font-light">© ۱۴۰۲ تمامی حقوق برای هولوکیل محفوظ است.</p>
+<div class="flex gap-4">
+<div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center p-2 hover:bg-white/10 transition-colors">
+<img alt="Enamad" class="w-full h-full object-contain grayscale hover:grayscale-0 transition-all" data-alt="Official Iranian trust symbol badge icon with professional typography and clean lines" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfZ9AOHl4PedCqf_tR6CCOc-Vsvb3qk7SB1ZmjeEjJsgRYRs8VUYu61eMksE03fv5ZUj0gKQskz6VIyt6JCmoevdYTg2b6jSE_flawvXx1ZA-MTYBc5rgbn_uuKZX_YeuIrFqb28in1hNcFReh_DKNhBuQvfU22agjwcuZa5Fye9W8XNEydW3iOnBb9nbSb1OmSV3fdSGmjG4N-ei5ZTQ0mhbZ4Sl_R1wI97N4ujrBb-A4_SdhhGxGM_SSCQNRDWHVcrQ4hd5UGAY"/>
+</div>
+<div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center p-2 hover:bg-white/10 transition-colors">
+<img alt="Samandehi" class="w-full h-full object-contain grayscale hover:grayscale-0 transition-all" data-alt="Official Iranian samandehi registration symbol badge with geometric shapes and professional styling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAu0dXUfLPJomjEPOxMeyYmsPS6f-MTMGdg9QHbM42ZYrrArBNypLBnHWRgcrqPntCPMqnY6EibN1xApQwdMd0BEfqyCZBoTfSHlEn0Za3vsfGjzGbv9i3bn7PyuEVU0f57ZYihY5Pt4XJn5MG3_iE_R-cB1w9xHI2H4Pd21C8QGRoUV_uaac5Brte5cDdKmWIM2cwDVhY7iNL5KTIZbJSScbB8r1qbpiU5NI-TUrwFdhRrEhptYbAvdkLfgiewkNG6FcnE-WmItEU"/>
+</div>
+</div>
+</div>
+</footer>
+</body></html>
