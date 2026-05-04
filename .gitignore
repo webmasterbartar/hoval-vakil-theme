@@ -10,3 +10,6 @@ tools/import_run.log
 tools/import.config.json
 tools/.import.config.json
 tools/__pycache__/
+
+# build_import_bundle.py output (manifest + images + zip)
+dist/

@@ -231,6 +231,8 @@ require get_template_directory() . '/includes/hovalvakil-lawyer-reset-core.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-cli.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-reset-rest.php';
 require get_template_directory() . '/includes/hovalvakil-admin-reset-import.php';
+require get_template_directory() . '/includes/hovalvakil-admin-bundle-import.php';
+require get_template_directory() . '/includes/hovalvakil-lawyer-csv-import.php';
 require get_template_directory() . '/includes/hovalvakil-seeder.php';
 require get_template_directory() . '/includes/hovalvakil-admin-reservations.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-meta.php';

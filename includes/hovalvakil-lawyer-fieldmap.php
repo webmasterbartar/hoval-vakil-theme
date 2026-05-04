@@ -1,6 +1,6 @@
 <?php
 /**
- * Lawyer post meta + taxonomy field map for admin, templates, REST, and future CSV import.
+ * Lawyer post meta + taxonomy field map for admin, templates, REST, and CSV import (hovalvakil-lawyer-csv-import.php).
  *
  * Import column names (suggested): full_name → post_title; photo_url → featured image sideload;
  * province_slug/name → hvl_province; city_slug/name → hvl_city; mobile → hvl_mobile;

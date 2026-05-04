@@ -1,7 +1,7 @@
 {
-  "wp_base": "https://www.YOUR-SITE.com",
-  "wp_user": "YOUR_WORDPRESS_USERNAME",
-  "wp_app_password": "application password from WordPress user profile",
+  "wp_base": "https://example.com",
+  "wp_user": "your_wp_username",
+  "wp_app_password": "xxxx xxxx xxxx xxxx xxxx xxxx",
   "checkpoint": "run-20260429-135734/checkpoint.json",
   "data_dir": null,
   "batch_sleep": 1.5,
