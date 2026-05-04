@@ -7,4 +7,6 @@ run-*-*/
 tools/.import_state.json
 tools/import_failed.jsonl
 tools/import_run.log
+tools/import.config.json
+tools/.import.config.json
 tools/__pycache__/

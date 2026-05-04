@@ -14,7 +14,15 @@ Optional ``--image-mode sideload_url``: starts a local HTTP server so WordPress 
 Setup:
   pip install -r tools/requirements.txt
 
-Example:
+یک‌بار فایل ``tools/import.config.json`` را از روی نمونه بسازید (در گیت نیست)؛ بعد فقط:
+
+  python tools/import_lawyers.py
+
+یا در ویندوز: ``tools\\run_import.cmd``
+
+اولویت تنظیمات: آرگومان‌های خط فرمان > متغیرهای محیطی ``HVL_WP_*`` > ``import.config.json``.
+
+Example (بدون فایل تنظیم):
   python tools/import_lawyers.py --wp-base https://example.com --wp-user USER \\
     --wp-app-password xxxx --log-file tools/import_run.log --limit 5
 
@@ -26,6 +34,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 import logging
 import re
 import sys
@@ -46,10 +55,96 @@ except ImportError:
 
 STATE_PATH = Path(__file__).resolve().parent / ".import_state.json"
 FAIL_LOG = Path(__file__).resolve().parent / "import_failed.jsonl"
+THEME_ROOT = Path(__file__).resolve().parents[1]
+_CONFIG_FILENAMES = ("import.config.json", ".import.config.json")
+
+
+def _argv_has_flag(flag: str) -> bool:
+    """True if user passed e.g. --batch-sleep or --batch-sleep=2 on the command line."""
+    prefix = flag + "="
+    for a in sys.argv:
+        if a == flag or a.startswith(prefix):
+            return True
+    return False
+
 
 BATCH_MAX = 50
 MAX_BATCH_RETRIES = 8
 MAX_ITEM_RETRIES = 5
+
+
+def load_import_config_json() -> Dict[str, Any]:
+    """Local credentials/settings (not committed). First existing file wins."""
+    for name in _CONFIG_FILENAMES:
+        p = THEME_ROOT / "tools" / name
+        if p.is_file():
+            try:
+                raw = json.loads(p.read_text(encoding="utf-8"))
+                return raw if isinstance(raw, dict) else {}
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+
+def resolve_theme_relative(path_val: str | Path | None) -> Path | None:
+    if path_val is None or path_val == "":
+        return None
+    p = Path(path_val)
+    if p.is_absolute():
+        return p.resolve()
+    return (THEME_ROOT / p).resolve()
+
+
+def apply_config_env_defaults(args: argparse.Namespace, file_cfg: Dict[str, Any]) -> None:
+    """
+    Fill wp_base / wp_user / wp_app_password and optional paths from env + file if CLI left them empty.
+    Priority: explicit CLI > HVL_WP_* env > import.config.json.
+    """
+    # wp_base
+    if not getattr(args, "wp_base", None) or not str(args.wp_base).strip():
+        v = (os.environ.get("HVL_WP_BASE") or "").strip() or str(file_cfg.get("wp_base") or "").strip()
+        if v:
+            args.wp_base = v
+    # wp_user
+    if not getattr(args, "wp_user", None) or not str(args.wp_user).strip():
+        v = (os.environ.get("HVL_WP_USER") or "").strip() or str(file_cfg.get("wp_user") or "").strip()
+        if v:
+            args.wp_user = v
+    # app password (spaces OK in JSON)
+    if not getattr(args, "wp_app_password", None) or not str(args.wp_app_password).strip():
+        v = (os.environ.get("HVL_WP_APP_PASSWORD") or "").strip() or str(file_cfg.get("wp_app_password") or "").strip()
+        if v:
+            args.wp_app_password = v
+    # checkpoint / data_dir only if not passed on CLI
+    if getattr(args, "checkpoint", None) is None and file_cfg.get("checkpoint"):
+        args.checkpoint = resolve_theme_relative(str(file_cfg["checkpoint"]))
+    if getattr(args, "data_dir", None) is None and file_cfg.get("data_dir"):
+        args.data_dir = resolve_theme_relative(str(file_cfg["data_dir"]))
+    # optional numeric / string overrides from file if not in argv (simple: only if key present)
+    if file_cfg.get("batch_sleep") is not None and not _argv_has_flag("--batch-sleep"):
+        try:
+            args.batch_sleep = float(file_cfg["batch_sleep"])
+        except (TypeError, ValueError):
+            pass
+    if file_cfg.get("limit") is not None and not _argv_has_flag("--limit"):
+        try:
+            args.limit = int(file_cfg["limit"])
+        except (TypeError, ValueError):
+            pass
+    if file_cfg.get("timeout") is not None and not _argv_has_flag("--timeout"):
+        try:
+            args.timeout = int(file_cfg["timeout"])
+        except (TypeError, ValueError):
+            pass
+    if file_cfg.get("image_mode") and not _argv_has_flag("--image-mode"):
+        im = str(file_cfg["image_mode"]).strip()
+        if im in ("rest_media", "sideload_url", "none"):
+            args.image_mode = im  # type: ignore[assignment]
+    if file_cfg.get("image_host") and not _argv_has_flag("--image-host"):
+        args.image_host = str(file_cfg["image_host"]).strip()
+    if file_cfg.get("log_file") and not _argv_has_flag("--log-file"):
+        lp = resolve_theme_relative(str(file_cfg["log_file"]))
+        args.log_file = lp if lp is not None else Path(str(file_cfg["log_file"]))
 
 
 def setup_logging(verbose: bool, log_file: Path | None) -> None:
@@ -463,12 +558,13 @@ def retry_items_one_by_one(
 
 
 def main() -> int:
+    file_cfg = load_import_config_json()
     ap = argparse.ArgumentParser(description="Import lawyers from checkpoint.json via WordPress REST batch API.")
     ap.add_argument(
         "--checkpoint",
         type=Path,
         default=None,
-        help="checkpoint.json path (default: theme/run-20260429-135734/checkpoint.json)",
+        help="checkpoint.json path (default: theme/run-20260429-135734/checkpoint.json or import.config.json)",
     )
     ap.add_argument(
         "--data-dir",
@@ -476,9 +572,17 @@ def main() -> int:
         default=None,
         help="Folder served as web root for /images/... (default: parent of checkpoint)",
     )
-    ap.add_argument("--wp-base", required=True, help="Site URL, e.g. https://example.com")
-    ap.add_argument("--wp-user", required=True)
-    ap.add_argument("--wp-app-password", required=True)
+    ap.add_argument(
+        "--wp-base",
+        default=None,
+        help="Site URL (or set in tools/import.config.json / env HVL_WP_BASE)",
+    )
+    ap.add_argument("--wp-user", default=None, help="WordPress username (or import.config.json / HVL_WP_USER)")
+    ap.add_argument(
+        "--wp-app-password",
+        default=None,
+        help="Application password without spaces (or import.config.json / HVL_WP_APP_PASSWORD)",
+    )
     ap.add_argument("--image-host", default="", help="Public base URL for images (default: http://127.0.0.1:IMAGE_PORT)")
     ap.add_argument("--image-bind", default="127.0.0.1")
     ap.add_argument("--image-port", type=int, default=18779)
@@ -512,6 +616,35 @@ def main() -> int:
         help="رونوشت لاگ در این فایل UTF-8 (مثلاً tools/import_run.log)",
     )
     args = ap.parse_args()
+    apply_config_env_defaults(args, file_cfg)
+
+    if not args.wp_base or not str(args.wp_base).strip():
+        sys.stderr.write(
+            "خطا: آدرس سایت خالی است.\n"
+            "  یکی را انجام دهید:\n"
+            "  • فایل tools/import.config.json از روی tools/import.config.example.json بسازید و wp_base / wp_user / wp_app_password را پر کنید\n"
+            "  • یا متغیرهای HVL_WP_BASE و HVL_WP_USER و HVL_WP_APP_PASSWORD را بگذارید\n"
+            "  • یا همان‌ها را به‌صورت --wp-base ... --wp-user ... --wp-app-password ... بدهید\n"
+        )
+        return 2
+    if not args.wp_user or not str(args.wp_user).strip():
+        sys.stderr.write("خطا: wp_user خالی است (فایل تنظیم یا HVL_WP_USER یا --wp-user).\n")
+        return 2
+    if not args.wp_app_password or not str(args.wp_app_password).strip():
+        sys.stderr.write("خطا: wp_app_password خالی است (فایل تنظیم یا HVL_WP_APP_PASSWORD یا --wp-app-password).\n")
+        return 2
+
+    def _anchor_path(p: Path | None) -> Path | None:
+        if p is None:
+            return None
+        if p.is_absolute():
+            return p.resolve()
+        return (THEME_ROOT / p).resolve()
+
+    args.checkpoint = _anchor_path(args.checkpoint)
+    args.data_dir = _anchor_path(args.data_dir)
+    if args.log_file is not None:
+        args.log_file = _anchor_path(args.log_file)
 
     log_file_resolved = args.log_file.resolve() if args.log_file else None
     setup_logging(args.verbose, log_file_resolved)
@@ -524,7 +657,7 @@ def main() -> int:
         not args.no_resume,
     )
 
-    theme_root = Path(__file__).resolve().parents[1]
+    theme_root = THEME_ROOT
     checkpoint = args.checkpoint or (theme_root / "run-20260429-135734" / "checkpoint.json")
     data_dir = args.data_dir or checkpoint.parent
     if not checkpoint.is_file():
@@ -551,7 +684,8 @@ def main() -> int:
         log.info("[STEP] تصاویر غیرفعال (image-mode=none)")
 
     session = requests.Session()
-    auth = base64.b64encode(f"{args.wp_user}:{args.wp_app_password}".encode()).decode("ascii")
+    app_pw = re.sub(r"\s+", "", str(args.wp_app_password))
+    auth = base64.b64encode(f"{args.wp_user}:{app_pw}".encode()).decode("ascii")
     session.headers["Authorization"] = f"Basic {auth}"
     session.headers["Accept"] = "application/json"
 

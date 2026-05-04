@@ -1,0 +1,12 @@
+{
+  "wp_base": "https://YOUR-SITE.com",
+  "wp_user": "YOUR_WORDPRESS_USERNAME",
+  "wp_app_password": "paste application password with or without spaces",
+  "checkpoint": "run-20260429-135734/checkpoint.json",
+  "data_dir": null,
+  "batch_sleep": 1.5,
+  "limit": 0,
+  "timeout": 180,
+  "image_mode": "rest_media",
+  "log_file": "tools/import_run.log"
+}
