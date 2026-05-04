@@ -21,77 +21,6 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	class Hovalvakil_Lawyer_CLI_Command {
 
 		/**
-		 * Delete all posts of a type (optional featured image per post).
-		 *
-		 * @param string $post_type Post type slug.
-		 * @param bool   $delete_thumb Whether to delete featured image attachment.
-		 * @return int Number deleted.
-		 */
-		private function delete_all_of_type( $post_type, $delete_thumb = true ) {
-			$post_type = sanitize_key( (string) $post_type );
-			if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
-				return 0;
-			}
-			$ids = get_posts(
-				[
-					'post_type'              => $post_type,
-					'post_status'            => 'any',
-					'posts_per_page'         => -1,
-					'fields'                 => 'ids',
-					'no_found_rows'          => true,
-					'update_post_meta_cache' => false,
-				]
-			);
-			$n = 0;
-			foreach ( $ids as $post_id ) {
-				$post_id = (int) $post_id;
-				if ( $delete_thumb ) {
-					$thumb_id = (int) get_post_thumbnail_id( $post_id );
-					if ( $thumb_id ) {
-						wp_delete_attachment( $thumb_id, true );
-					}
-				}
-				if ( wp_delete_post( $post_id, true ) ) {
-					$n++;
-				}
-			}
-			return $n;
-		}
-
-		/**
-		 * Remove all terms in given taxonomies (empty term tables for re-import).
-		 *
-		 * @param string[] $taxonomies Taxonomy slugs.
-		 * @return int Terms deleted.
-		 */
-		private function delete_all_terms_in_taxonomies( array $taxonomies ) {
-			$total = 0;
-			foreach ( $taxonomies as $tax ) {
-				$tax = sanitize_key( (string) $tax );
-				if ( '' === $tax || ! taxonomy_exists( $tax ) ) {
-					continue;
-				}
-				$terms = get_terms(
-					[
-						'taxonomy'   => $tax,
-						'hide_empty' => false,
-						'fields'     => 'ids',
-					]
-				);
-				if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
-					continue;
-				}
-				foreach ( $terms as $term_id ) {
-					$r = wp_delete_term( (int) $term_id, $tax );
-					if ( ! is_wp_error( $r ) && false !== $r ) {
-						$total++;
-					}
-				}
-			}
-			return $total;
-		}
-
-		/**
 		 * Full reset for lawyer import: reviews, reservations, lawyers (+ thumbs).
 		 *
 		 * ## OPTIONS
@@ -116,37 +45,29 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			if ( empty( $assoc_args['yes'] ) ) {
 				WP_CLI::confirm( 'رزروها، نظرات و همهٔ وکلا (و تصویر شاخص) حذف شوند؟ در صورت فلگ‌های اضافی، مراکز/تخصص CPT/تاکسونومی هم پاک می‌شود.' );
 			}
-
-			$n_rev = $this->delete_all_of_type( 'hvl_review', false );
-			WP_CLI::log( sprintf( 'نظرات (hvl_review): %d', $n_rev ) );
-
-			$n_res = $this->delete_all_of_type( 'hvl_reservation', false );
-			WP_CLI::log( sprintf( 'رزروها (hvl_reservation): %d', $n_res ) );
-
-			$n_law = $this->delete_all_of_type( 'hvl_lawyer', true );
-			WP_CLI::log( sprintf( 'وکلا (hvl_lawyer): %d', $n_law ) );
-
-			if ( ! empty( $assoc_args['with-centers'] ) ) {
-				$n_c = $this->delete_all_of_type( 'hvl_center', true );
-				WP_CLI::log( sprintf( 'مراکز (hvl_center): %d', $n_c ) );
+			if ( ! function_exists( 'hovalvakil_reset_import_data_run' ) ) {
+				WP_CLI::error( 'تابع پاک‌سازی بارگذاری نشد (hovalvakil-lawyer-reset-core).' );
 			}
-
-			if ( ! empty( $assoc_args['with-services-cpt'] ) ) {
-				$n_s = $this->delete_all_of_type( 'hvl_service', true );
-				WP_CLI::log( sprintf( 'تخصص CPT (hvl_service): %d', $n_s ) );
-			}
-
-			if ( ! empty( $assoc_args['with-taxonomies'] ) ) {
-				$n_t = $this->delete_all_terms_in_taxonomies( [ 'hvl_city', 'hvl_province', 'hvl_specialty' ] );
-				WP_CLI::log( sprintf( 'ترم تاکسونومی (شهر/استان/تخصص): %d', $n_t ) );
-			}
-
-			WP_CLI::success(
-				sprintf(
-					'پاک‌سازی انجام شد. وکیل: %d؛ مجموع مراحل بالا را در لاگ ببینید.',
-					$n_law
-				)
+			$out = hovalvakil_reset_import_data_run(
+				[
+					'with_centers'       => ! empty( $assoc_args['with-centers'] ),
+					'with_services_cpt'  => ! empty( $assoc_args['with-services-cpt'] ),
+					'with_taxonomies'    => ! empty( $assoc_args['with-taxonomies'] ),
+				]
 			);
+			WP_CLI::log( sprintf( 'نظرات (hvl_review): %d', (int) ( $out['hvl_review'] ?? 0 ) ) );
+			WP_CLI::log( sprintf( 'رزروها (hvl_reservation): %d', (int) ( $out['hvl_reservation'] ?? 0 ) ) );
+			WP_CLI::log( sprintf( 'وکلا (hvl_lawyer): %d', (int) ( $out['hvl_lawyer'] ?? 0 ) ) );
+			if ( ! empty( $assoc_args['with-centers'] ) ) {
+				WP_CLI::log( sprintf( 'مراکز (hvl_center): %d', (int) ( $out['hvl_center'] ?? 0 ) ) );
+			}
+			if ( ! empty( $assoc_args['with-services-cpt'] ) ) {
+				WP_CLI::log( sprintf( 'تخصص CPT (hvl_service): %d', (int) ( $out['hvl_service'] ?? 0 ) ) );
+			}
+			if ( ! empty( $assoc_args['with-taxonomies'] ) ) {
+				WP_CLI::log( sprintf( 'ترم تاکسونومی (شهر/استان/تخصص): %d', (int) ( $out['taxonomy_terms'] ?? 0 ) ) );
+			}
+			WP_CLI::success( sprintf( 'پاک‌سازی انجام شد. وکیل حذف‌شده: %d.', (int) ( $out['hvl_lawyer'] ?? 0 ) ) );
 		}
 
 		/**
@@ -165,7 +86,10 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			if ( empty( $assoc_args['yes'] ) ) {
 				WP_CLI::confirm( 'همهٔ پست‌های نوع hvl_lawyer و تصویر شاخص هر کدام حذف شود؟' );
 			}
-			$n = $this->delete_all_of_type( 'hvl_lawyer', true );
+			if ( ! function_exists( 'hovalvakil_reset_lawyers_only_run' ) ) {
+				WP_CLI::error( 'تابع پاک‌سازی بارگذاری نشد.' );
+			}
+			$n = hovalvakil_reset_lawyers_only_run();
 			WP_CLI::success( sprintf( 'حذف شد: %d وکیل.', $n ) );
 		}
 
@@ -189,37 +113,10 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			if ( empty( $assoc_args['yes'] ) ) {
 				WP_CLI::confirm( 'همهٔ محصولات ووکامرس (شامل متغیرها) برای همیشه حذف شوند؟' );
 			}
-			$variation_ids = get_posts(
-				[
-					'post_type'              => 'product_variation',
-					'post_status'            => 'any',
-					'posts_per_page'         => -1,
-					'fields'                 => 'ids',
-					'no_found_rows'          => true,
-					'update_post_meta_cache' => false,
-				]
-			);
-			$product_ids = get_posts(
-				[
-					'post_type'              => 'product',
-					'post_status'            => 'any',
-					'posts_per_page'         => -1,
-					'fields'                 => 'ids',
-					'no_found_rows'          => true,
-					'update_post_meta_cache' => false,
-				]
-			);
-			$n = 0;
-			foreach ( $variation_ids as $vid ) {
-				if ( wp_delete_post( (int) $vid, true ) ) {
-					$n++;
-				}
+			if ( ! function_exists( 'hovalvakil_reset_delete_wc_products' ) ) {
+				WP_CLI::error( 'تابع پاک‌سازی بارگذاری نشد.' );
 			}
-			foreach ( $product_ids as $pid ) {
-				if ( wp_delete_post( (int) $pid, true ) ) {
-					$n++;
-				}
-			}
+			$n = hovalvakil_reset_delete_wc_products();
 			WP_CLI::success( sprintf( 'حذف شد: %d رکورد محصول/متغیر.', $n ) );
 		}
 	}
