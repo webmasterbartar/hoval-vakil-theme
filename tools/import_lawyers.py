@@ -56,7 +56,15 @@ except ImportError:
 STATE_PATH = Path(__file__).resolve().parent / ".import_state.json"
 FAIL_LOG = Path(__file__).resolve().parent / "import_failed.jsonl"
 THEME_ROOT = Path(__file__).resolve().parents[1]
-_CONFIG_FILENAMES = ("import.config.json", ".import.config.json")
+
+
+def _import_config_candidate_paths() -> List[Path]:
+    """Order: tools/import.config.json, tools/.import.config.json, theme root import.config.json."""
+    return [
+        THEME_ROOT / "tools" / "import.config.json",
+        THEME_ROOT / "tools" / ".import.config.json",
+        THEME_ROOT / "import.config.json",
+    ]
 
 
 def _argv_has_flag(flag: str) -> bool:
@@ -73,17 +81,27 @@ MAX_BATCH_RETRIES = 8
 MAX_ITEM_RETRIES = 5
 
 
-def load_import_config_json() -> Dict[str, Any]:
-    """Local credentials/settings (not committed). First existing file wins."""
-    for name in _CONFIG_FILENAMES:
-        p = THEME_ROOT / "tools" / name
+def load_import_config_json() -> Tuple[Dict[str, Any], Path | None]:
+    """
+    Local credentials/settings (not committed). First existing file wins.
+    Returns (dict, path_read_or_none). Uses utf-8-sig so BOM from Notepad does not break JSON.
+    """
+    for p in _import_config_candidate_paths():
         if p.is_file():
             try:
-                raw = json.loads(p.read_text(encoding="utf-8"))
-                return raw if isinstance(raw, dict) else {}
+                raw = json.loads(p.read_text(encoding="utf-8-sig"))
+                return (raw if isinstance(raw, dict) else {}, p)
             except json.JSONDecodeError:
-                return {}
-    return {}
+                return ({}, p)
+    return ({}, None)
+
+
+def _cfg_first_str(cfg: Dict[str, Any], *keys: str) -> str:
+    for k in keys:
+        v = cfg.get(k)
+        if v is not None and str(v).strip():
+            return str(v).strip()
+    return ""
 
 
 def resolve_theme_relative(path_val: str | Path | None) -> Path | None:
@@ -100,19 +118,25 @@ def apply_config_env_defaults(args: argparse.Namespace, file_cfg: Dict[str, Any]
     Fill wp_base / wp_user / wp_app_password and optional paths from env + file if CLI left them empty.
     Priority: explicit CLI > HVL_WP_* env > import.config.json.
     """
-    # wp_base
+    # wp_base (aliases for common copy-paste mistakes)
     if not getattr(args, "wp_base", None) or not str(args.wp_base).strip():
-        v = (os.environ.get("HVL_WP_BASE") or "").strip() or str(file_cfg.get("wp_base") or "").strip()
+        v = (os.environ.get("HVL_WP_BASE") or "").strip() or _cfg_first_str(
+            file_cfg, "wp_base", "wpBase", "wordpress_url", "site", "url", "base"
+        )
         if v:
             args.wp_base = v
     # wp_user
     if not getattr(args, "wp_user", None) or not str(args.wp_user).strip():
-        v = (os.environ.get("HVL_WP_USER") or "").strip() or str(file_cfg.get("wp_user") or "").strip()
+        v = (os.environ.get("HVL_WP_USER") or "").strip() or _cfg_first_str(
+            file_cfg, "wp_user", "wpUser", "user", "username", "login"
+        )
         if v:
             args.wp_user = v
     # app password (spaces OK in JSON)
     if not getattr(args, "wp_app_password", None) or not str(args.wp_app_password).strip():
-        v = (os.environ.get("HVL_WP_APP_PASSWORD") or "").strip() or str(file_cfg.get("wp_app_password") or "").strip()
+        v = (os.environ.get("HVL_WP_APP_PASSWORD") or "").strip() or _cfg_first_str(
+            file_cfg, "wp_app_password", "wpAppPassword", "app_password", "application_password", "password"
+        )
         if v:
             args.wp_app_password = v
     # checkpoint / data_dir only if not passed on CLI
@@ -558,7 +582,7 @@ def retry_items_one_by_one(
 
 
 def main() -> int:
-    file_cfg = load_import_config_json()
+    file_cfg, import_config_path = load_import_config_json()
     ap = argparse.ArgumentParser(description="Import lawyers from checkpoint.json via WordPress REST batch API.")
     ap.add_argument(
         "--checkpoint",
@@ -619,12 +643,28 @@ def main() -> int:
     apply_config_env_defaults(args, file_cfg)
 
     if not args.wp_base or not str(args.wp_base).strip():
+        sys.stderr.write("خطا: آدرس سایت (wp_base) خالی است.\n\n")
+        sys.stderr.write("فایل‌هایی که برای تنظیمات بررسی می‌شوند:\n")
+        for c in _import_config_candidate_paths():
+            mark = " (موجود)" if c.is_file() else ""
+            sys.stderr.write(f"  • {c}{mark}\n")
+        if import_config_path is None:
+            sys.stderr.write(
+                "\nهیچ import.config.json پیدا نشد. یک‌بار در PowerShell از ریشهٔ تم:\n"
+                "  Copy-Item tools\\import.config.example.json tools\\import.config.json\n"
+                "  notepad tools\\import.config.json\n"
+                "و سه فیلد wp_base و wp_user و wp_app_password را پر کنید (نام کلیدها دقیقاً با خط تیرهٔ زیرین، نه خط تیره).\n\n"
+            )
+        elif import_config_path is not None and not _cfg_first_str(
+            file_cfg, "wp_base", "wpBase", "wordpress_url", "site", "url", "base"
+        ):
+            sys.stderr.write(
+                f"\nفایل تنظیم پیدا شد اما آدرس سایت در آن نیست: {import_config_path}\n"
+                "  اگر JSON خطا دارد آن را اصلاح کنید؛ وگرنه کلید \"wp_base\" (یا wordpress_url) را پر کنید.\n\n"
+            )
         sys.stderr.write(
-            "خطا: آدرس سایت خالی است.\n"
-            "  یکی را انجام دهید:\n"
-            "  • فایل tools/import.config.json از روی tools/import.config.example.json بسازید و wp_base / wp_user / wp_app_password را پر کنید\n"
-            "  • یا متغیرهای HVL_WP_BASE و HVL_WP_USER و HVL_WP_APP_PASSWORD را بگذارید\n"
-            "  • یا همان‌ها را به‌صورت --wp-base ... --wp-user ... --wp-app-password ... بدهید\n"
+            "یا متغیرهای محیطی HVL_WP_BASE و HVL_WP_USER و HVL_WP_APP_PASSWORD را بگذارید،\n"
+            "یا همان‌ها را به‌صورت --wp-base ... --wp-user ... --wp-app-password ... بدهید.\n"
         )
         return 2
     if not args.wp_user or not str(args.wp_user).strip():
