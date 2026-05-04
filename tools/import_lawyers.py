@@ -443,6 +443,40 @@ def _build_item_payload(
     )
 
 
+def _is_dns_or_resolve_failure(message: str) -> bool:
+    m = (message or "").lower()
+    needles = (
+        "getaddrinfo",
+        "name resolution",
+        "failed to resolve",
+        "nodename nor servname",
+        "name or service not known",
+        "temporary failure in name resolution",
+        "errno 11002",
+    )
+    return any(n in m for n in needles)
+
+
+def _www_fallback_wp_base(wp_base: str) -> str | None:
+    """If host is apex (no www), return same URL with www. prefix; else None."""
+    raw = (wp_base or "").strip().rstrip("/")
+    if not raw:
+        return None
+    if "://" not in raw:
+        raw = "https://" + raw
+    p = urllib.parse.urlparse(raw)
+    scheme = (p.scheme or "https").lower()
+    if scheme not in ("http", "https"):
+        return None
+    host = (p.hostname or "").strip().lower()
+    if not host or host.startswith("www."):
+        return None
+    port = p.port
+    netloc = f"www.{host}:{port}" if port else f"www.{host}"
+    path = p.path if p.path else "/"
+    return urllib.parse.urlunparse((scheme, netloc, path, "", "", "")).rstrip("/")
+
+
 def post_batch(
     session: requests.Session,
     wp_base: str,
@@ -476,7 +510,17 @@ def verify_lawyers_batch_route(session: requests.Session, wp_base: str, timeout:
     try:
         r = session.get(index_url, timeout=timeout)
     except requests.RequestException as exc:
-        return False, f"به {index_url} وصل نشد: {exc}"
+        err = str(exc)
+        hint = ""
+        if _is_dns_or_resolve_failure(err):
+            host = urllib.parse.urlparse(wp_base if "://" in wp_base else "https://" + wp_base).hostname or ""
+            hint = (
+                f" — DNS نام «{host}» از این شبکه حل نشد. "
+                "اگر سایت با www است در import.config.json مقدار wp_base را مثلاً "
+                "https://www.example.com بگذارید؛ در PowerShell: nslookup " + host + "؛ "
+                "یا VPN/دی‌ان‌اس دیگر؛ در صورت اطمینان از باز بودن REST، --skip-route-check."
+            )
+        return False, f"به {index_url} وصل نشد: {exc}{hint}"
     if r.status_code != 200:
         return False, f"GET wp-json/ کد {r.status_code} برگرداند."
     try:
@@ -499,6 +543,32 @@ def verify_lawyers_batch_route(session: requests.Session, wp_base: str, timeout:
         "تم فعال روی هاست باید همان نسخه‌ای باشد که فایل includes/hovalvakil-lawyer-rest-import.php را دارد؛ "
         "قالب را آپلود/به‌روز کنید و کش را خالی کنید، بعد دوباره اسکریپت را اجرا کنید.",
     )
+
+
+def verify_lawyers_batch_route_with_www_fallback(
+    session: requests.Session, wp_base: str, timeout: int, log: logging.Logger
+) -> Tuple[bool, str, str]:
+    """
+    Like verify_lawyers_batch_route, but if the failure looks like DNS on apex host,
+    retry once with www. Returns (ok, message, effective_wp_base).
+    """
+    ok, msg = verify_lawyers_batch_route(session, wp_base, timeout)
+    if ok:
+        return True, "", wp_base.rstrip("/")
+    if not _is_dns_or_resolve_failure(msg):
+        return False, msg, wp_base.rstrip("/")
+    alt = _www_fallback_wp_base(wp_base)
+    if not alt or alt.rstrip("/").lower() == wp_base.rstrip("/").lower():
+        return False, msg, wp_base.rstrip("/")
+    log.warning("[STEP] نام میزبان apex از این شبکه حل نشد؛ تست با www: %s", alt)
+    ok2, msg2 = verify_lawyers_batch_route(session, alt, timeout)
+    if ok2:
+        log.warning(
+            "[STEP] با www وصل شد. مقدار wp_base در import.config.json را به «%s» تغییر دهید تا دفعهٔ بعد خودکار باشد.",
+            alt,
+        )
+        return True, "", alt.rstrip("/")
+    return False, msg + "\nتلاش دوم با www هم ناموفق: " + msg2, wp_base.rstrip("/")
 
 
 def run_http_server(directory: Path, host: str, port: int) -> ThreadingHTTPServer:
@@ -730,11 +800,14 @@ def main() -> int:
     session.headers["Accept"] = "application/json"
 
     if not args.skip_route_check:
-        ok_route, route_msg = verify_lawyers_batch_route(session, args.wp_base, args.timeout)
+        ok_route, route_msg, effective_base = verify_lawyers_batch_route_with_www_fallback(
+            session, args.wp_base, args.timeout, log
+        )
+        args.wp_base = effective_base
         if not ok_route:
             log.error("%s", route_msg)
             raise SystemExit(2)
-        log.info("REST batch route OK on server.")
+        log.info("REST batch route OK on server (base=%s).", args.wp_base)
 
     log.info("Loading checkpoint JSON (large file, may take memory/time)...")
     data = json.loads(checkpoint.read_text(encoding="utf-8"))
