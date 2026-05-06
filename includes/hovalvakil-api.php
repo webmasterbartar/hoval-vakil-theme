@@ -77,6 +77,136 @@ function hovalvakil_rest_resolve_taxonomy_slugs( $csv, $taxonomy ) {
 }
 
 /**
+ * Meta_query برای فیلتر «پایه» وکالت از روی hvl_lawyer_grade (متن آزاد ایمپورت).
+ *
+ * @param string $slug یکی از: p1 | p2 | karamooz.
+ * @return array<string, mixed>|null
+ */
+function hovalvakil_lawyer_grade_meta_query_for_slug( $slug ) {
+	$slug = sanitize_key( (string) $slug );
+	if ( '' === $slug ) {
+		return null;
+	}
+	if ( 'p1' === $slug ) {
+		return [
+			'relation' => 'OR',
+			[
+				'key'     => 'hvl_lawyer_grade',
+				'value'   => 'پایه یک',
+				'compare' => 'LIKE',
+			],
+		];
+	}
+	if ( 'p2' === $slug ) {
+		return [
+			'relation' => 'AND',
+			[
+				'relation' => 'OR',
+				[
+					'key'     => 'hvl_lawyer_grade',
+					'value'   => 'پایه دو',
+					'compare' => 'LIKE',
+				],
+				[
+					'key'     => 'hvl_lawyer_grade',
+					'value'   => 'پایه ۲',
+					'compare' => 'LIKE',
+				],
+			],
+			[
+				'key'     => 'hvl_lawyer_grade',
+				'value'   => 'پایه یک',
+				'compare' => 'NOT LIKE',
+			],
+		];
+	}
+	if ( 'karamooz' === $slug ) {
+		return [
+			'relation' => 'OR',
+			[
+				'key'     => 'hvl_lawyer_grade',
+				'value'   => 'کارآموز',
+				'compare' => 'LIKE',
+			],
+			[
+				'key'     => 'hvl_lawyer_grade',
+				'value'   => 'کار آموز',
+				'compare' => 'LIKE',
+			],
+		];
+	}
+	return null;
+}
+
+/**
+ * تعداد وکلای منتشرشده برای یک slug مقطع (p1 | p2 | karamooz).
+ *
+ * @param string $slug Slug.
+ * @return int
+ */
+function hovalvakil_lawyer_grade_count_for_slug( $slug ) {
+	$meta = hovalvakil_lawyer_grade_meta_query_for_slug( $slug );
+	if ( ! $meta ) {
+		return 0;
+	}
+	$query = new WP_Query(
+		[
+			'post_type'              => 'hvl_lawyer',
+			'post_status'            => 'publish',
+			'posts_per_page'         => 1,
+			'fields'                 => 'ids',
+			'no_found_rows'          => false,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
+			'meta_query'             => $meta,
+		]
+	);
+	return (int) $query->found_posts;
+}
+
+/**
+ * جفت استان+شهر بر اساس هم‌آیی روی همان پست وکیل (برای صفحهٔ اصلی).
+ *
+ * @return array<int, array{province: WP_Term, city: WP_Term, lawyer_count: int}>
+ */
+function hovalvakil_home_city_province_pairs_for_lawyers() {
+	global $wpdb;
+	$sql  = "SELECT ttc.term_id AS city_id, ttp.term_id AS province_id, COUNT(DISTINCT p.ID) AS lawyer_count
+		FROM {$wpdb->posts} p
+		INNER JOIN {$wpdb->term_relationships} trc ON p.ID = trc.object_id
+		INNER JOIN {$wpdb->term_taxonomy} ttc ON trc.term_taxonomy_id = ttc.term_taxonomy_id AND ttc.taxonomy = %s
+		INNER JOIN {$wpdb->term_relationships} trp ON p.ID = trp.object_id
+		INNER JOIN {$wpdb->term_taxonomy} ttp ON trp.term_taxonomy_id = ttp.term_taxonomy_id AND ttp.taxonomy = %s
+		WHERE p.post_type = %s AND p.post_status = %s
+		GROUP BY ttc.term_id, ttp.term_id
+		HAVING lawyer_count > 0
+		ORDER BY province_id ASC, lawyer_count DESC, city_id ASC";
+	$rows = $wpdb->get_results( $wpdb->prepare( $sql, 'hvl_city', 'hvl_province', 'hvl_lawyer', 'publish' ), ARRAY_A );
+	if ( ! is_array( $rows ) || empty( $rows ) ) {
+		return [];
+	}
+	$out = [];
+	foreach ( $rows as $row ) {
+		$cid = (int) ( $row['city_id'] ?? 0 );
+		$pid = (int) ( $row['province_id'] ?? 0 );
+		if ( $cid <= 0 || $pid <= 0 ) {
+			continue;
+		}
+		$city = get_term( $cid, 'hvl_city' );
+		$prov = get_term( $pid, 'hvl_province' );
+		if ( ! $city || is_wp_error( $city ) || ! $prov || is_wp_error( $prov ) ) {
+			continue;
+		}
+		$out[] = [
+			'province'     => $prov,
+			'city'         => $city,
+			'lawyer_count' => (int) ( $row['lawyer_count'] ?? 0 ),
+		];
+	}
+	return $out;
+}
+
+/**
  * Register REST routes.
  *
  * @return void
@@ -95,6 +225,7 @@ function hovalvakil_register_rest_routes() {
 				'city_term'     => [ 'type' => 'string', 'required' => false ],
 				'province_term' => [ 'type' => 'string', 'required' => false ],
 				'specialty'     => [ 'type' => 'string', 'required' => false ],
+				'grade'         => [ 'type' => 'string', 'required' => false ],
 				'page'          => [ 'type' => 'integer', 'required' => false, 'default' => 1 ],
 				'per_page'      => [ 'type' => 'integer', 'required' => false, 'default' => 16 ],
 			],
@@ -373,6 +504,7 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 	$city_term = hovalvakil_rest_get_csv_query_param( $request, 'city_term' );
 	$province_term = hovalvakil_rest_get_csv_query_param( $request, 'province_term' );
 	$specialty = hovalvakil_rest_get_csv_query_param( $request, 'specialty' );
+	$grade_raw = sanitize_key( (string) $request->get_param( 'grade' ) );
 	$page      = max( 1, (int) $request->get_param( 'page' ) );
 	$per_page  = min( 48, max( 1, (int) $request->get_param( 'per_page' ) ) );
 
@@ -426,6 +558,11 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 
 	if ( ! empty( $tax_query ) ) {
 		$base_args['tax_query'] = $tax_query;
+	}
+
+	$grade_meta = hovalvakil_lawyer_grade_meta_query_for_slug( $grade_raw );
+	if ( $grade_meta ) {
+		$base_args['meta_query'] = $grade_meta;
 	}
 
 	$args = $base_args;
@@ -487,6 +624,21 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		$text_match_args['s']              = $q;
 		$text_ids = get_posts( $text_match_args );
 
+		$meta_match_args = $base_args;
+		$meta_match_args['fields']         = 'ids';
+		$meta_match_args['posts_per_page'] = 300;
+		$meta_match_args['paged']          = 1;
+		$meta_match_args['no_found_rows']  = true;
+		$meta_match_args['meta_query']     = [
+			'relation' => 'OR',
+			[
+				'key'     => 'hvl_office_address',
+				'value'   => $q,
+				'compare' => 'LIKE',
+			],
+		];
+		$meta_match_ids = get_posts( $meta_match_args );
+
 		$tax_match_ids = [];
 		if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) || ! empty( $matched_province_slugs ) ) {
 			$tax_match_args = $base_args;
@@ -534,7 +686,7 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			$tax_match_ids = get_posts( $tax_match_args );
 		}
 
-		$matched_ids = array_values( array_unique( array_map( 'intval', array_merge( $text_ids, $tax_match_ids ) ) ) );
+		$matched_ids = array_values( array_unique( array_map( 'intval', array_merge( $text_ids, $tax_match_ids, $meta_match_ids ) ) ) );
 
 		if ( empty( $matched_ids ) ) {
 			$args['post__in'] = [ 0 ];

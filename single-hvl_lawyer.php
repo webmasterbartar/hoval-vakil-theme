@@ -20,6 +20,9 @@ $post_id         = get_the_ID();
 $hvl_placeholder = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 	? hovalvakil_theme_lawyer_placeholder_url()
 	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+$hvl_img_onerror = function_exists( 'hovalvakil_lawyer_image_onerror_placeholder_attr' )
+	? hovalvakil_lawyer_image_onerror_placeholder_attr()
+	: '';
 $image_url       = function_exists( 'hovalvakil_lawyer_profile_image_url' )
 	? hovalvakil_lawyer_profile_image_url( $post_id, 'large' )
 	: (string) get_the_post_thumbnail_url( $post_id, 'large' );
@@ -221,7 +224,7 @@ get_header();
 		<section class="profile-hero">
 			<div class="profile-main-info">
 				<div class="profile-image-container">
-					<img id="profile-image" src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>">
+					<img id="profile-image" src="<?php echo esc_url( $image_url ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>"<?php echo $hvl_img_onerror; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 					<?php if ( $show_verified_strip ) : ?>
 					<div class="verified-badge" title="<?php echo esc_attr__( 'اطلاعات پروانه در پروفایل', 'hello-elementor' ); ?>">
 						<span class="material-symbols-outlined" style="font-size:14px;font-variation-settings:'FILL' 1;">check</span>
@@ -534,7 +537,7 @@ get_header();
 						?>
 						<div class="lawyer-card ghost-border editorial-shadow">
 							<div class="lawyer-card-image-wrapper">
-								<img class="lawyer-card-image" src="<?php echo esc_url( $rimg ? $rimg : $hvl_placeholder ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>" />
+								<img class="lawyer-card-image" src="<?php echo esc_url( $rimg ? $rimg : $hvl_placeholder ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>"<?php echo $hvl_img_onerror; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> />
 							</div>
 							<div class="lawyer-card-content">
 								<h3 class="lawyer-name"><?php the_title(); ?></h3>

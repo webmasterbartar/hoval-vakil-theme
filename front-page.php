@@ -40,69 +40,198 @@ $archive_url  = get_post_type_archive_link( 'hvl_lawyer' );
 $profile_fallback_image = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 	? hovalvakil_theme_lawyer_placeholder_url()
 	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
-$home_specialties = get_terms(
+$hovalvakil_lawyer_img_onerror = function_exists( 'hovalvakil_lawyer_image_onerror_placeholder_attr' )
+	? hovalvakil_lawyer_image_onerror_placeholder_attr()
+	: '';
+
+$home_grade_cards = [
 	[
-		'taxonomy'   => 'hvl_specialty',
-		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-	]
-);
-$home_cities = get_terms(
+		'slug'  => 'p1',
+		'label' => __( 'وکیل پایه یک', 'hello-elementor' ),
+		'icon'  => 'military_tech',
+	],
 	[
-		'taxonomy'   => 'hvl_city',
-		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-	]
-);
-// Lawyer counts per city (unique: only hvl_lawyer — term->count also includes hvl_center).
-$home_city_lawyer_counts = [];
-$home_specialty_lawyer_counts = [];
-if ( ! is_wp_error( $home_cities ) && ! empty( $home_cities ) ) {
-	global $wpdb;
-	$count_rows = $wpdb->get_results(
-		$wpdb->prepare(
-			"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS lawyer_count
-			FROM {$wpdb->posts} p
-			INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-			INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = %s
-			WHERE p.post_type = %s AND p.post_status = %s
-			GROUP BY tt.term_id",
-			'hvl_city',
-			'hvl_lawyer',
-			'publish'
-		),
-		ARRAY_A
-	);
-	if ( is_array( $count_rows ) ) {
-		foreach ( $count_rows as $row ) {
-			$home_city_lawyer_counts[ (int) $row['term_id'] ] = (int) $row['lawyer_count'];
-		}
-	}
+		'slug'  => 'p2',
+		'label' => __( 'وکیل پایه دو', 'hello-elementor' ),
+		'icon'  => 'workspace_premium',
+	],
+	[
+		'slug'  => 'karamooz',
+		'label' => __( 'کارآموز وکالت', 'hello-elementor' ),
+		'icon'  => 'school',
+	],
+];
+$home_grade_counts = [];
+foreach ( $home_grade_cards as $g ) {
+	$slug                    = $g['slug'];
+	$home_grade_counts[ $slug ] = function_exists( 'hovalvakil_lawyer_grade_count_for_slug' )
+		? hovalvakil_lawyer_grade_count_for_slug( $slug )
+		: 0;
 }
 
-if ( ! is_wp_error( $home_specialties ) && ! empty( $home_specialties ) ) {
-	global $wpdb;
-	$spec_count_rows = $wpdb->get_results(
-		$wpdb->prepare(
-			"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS lawyer_count
-			FROM {$wpdb->posts} p
-			INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-			INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = %s
-			WHERE p.post_type = %s AND p.post_status = %s
-			GROUP BY tt.term_id",
-			'hvl_specialty',
-			'hvl_lawyer',
-			'publish'
-		),
-		ARRAY_A
-	);
-	if ( is_array( $spec_count_rows ) ) {
-		foreach ( $spec_count_rows as $row ) {
-			$home_specialty_lawyer_counts[ (int) $row['term_id'] ] = (int) $row['lawyer_count'];
-		}
+$home_city_province_pairs = function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' )
+	? hovalvakil_home_city_province_pairs_for_lawyers()
+	: [];
+$home_cities_by_province  = [];
+foreach ( $home_city_province_pairs as $row ) {
+	$prov = $row['province'];
+	$city = $row['city'];
+	if ( ! $prov instanceof WP_Term || ! $city instanceof WP_Term ) {
+		continue;
 	}
+	$pid = (int) $prov->term_id;
+	if ( ! isset( $home_cities_by_province[ $pid ] ) ) {
+		$home_cities_by_province[ $pid ] = [
+			'province' => $prov,
+			'cities'   => [],
+		];
+	}
+	$home_cities_by_province[ $pid ]['cities'][] = [
+		'term'          => $city,
+		'lawyer_count'  => (int) ( $row['lawyer_count'] ?? 0 ),
+	];
+}
+uasort(
+	$home_cities_by_province,
+	static function ( $a, $b ) {
+		return strnatcasecmp( $a['province']->name, $b['province']->name );
+	}
+);
+foreach ( $home_cities_by_province as &$prov_block ) {
+	usort(
+		$prov_block['cities'],
+		static function ( $x, $y ) {
+			$cx = (int) ( $x['lawyer_count'] ?? 0 );
+			$cy = (int) ( $y['lawyer_count'] ?? 0 );
+			if ( $cx !== $cy ) {
+				return $cy <=> $cx;
+			}
+			return strnatcasecmp( $x['term']->name, $y['term']->name );
+		}
+	);
+}
+unset( $prov_block );
+
+// Fallback: اگر جفت استان+شهر در داده‌ها کامل نبود، شهرها را مستقیم از taxonomy وکیل‌ها نمایش بده.
+$home_city_fallback_rows = [];
+if ( empty( $home_cities_by_province ) ) {
+	$home_city_terms = get_terms(
+		[
+			'taxonomy'   => 'hvl_city',
+			'hide_empty' => false,
+			'orderby'    => 'name',
+			'order'      => 'ASC',
+		]
+	);
+	if ( ! is_wp_error( $home_city_terms ) && ! empty( $home_city_terms ) ) {
+		global $wpdb;
+		$city_counts = [];
+		$rows        = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS lawyer_count
+				FROM {$wpdb->posts} p
+				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = %s
+				WHERE p.post_type = %s AND p.post_status = %s
+				GROUP BY tt.term_id",
+				'hvl_city',
+				'hvl_lawyer',
+				'publish'
+			),
+			ARRAY_A
+		);
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$city_counts[ (int) $row['term_id'] ] = (int) $row['lawyer_count'];
+			}
+		}
+		foreach ( $home_city_terms as $city_term ) {
+			$count = (int) ( $city_counts[ (int) $city_term->term_id ] ?? 0 );
+			if ( $count <= 0 ) {
+				continue;
+			}
+			$home_city_fallback_rows[] = [
+				'term'         => $city_term,
+				'lawyer_count' => $count,
+			];
+		}
+		usort(
+			$home_city_fallback_rows,
+			static function ( $a, $b ) {
+				$ca = (int) ( $a['lawyer_count'] ?? 0 );
+				$cb = (int) ( $b['lawyer_count'] ?? 0 );
+				if ( $ca !== $cb ) {
+					return $cb <=> $ca;
+				}
+				return strnatcasecmp( $a['term']->name, $b['term']->name );
+			}
+		);
+	}
+}
+// Fallback سطح ۲: اگر taxonomy شهر هم خالی/بی‌استفاده بود، شهر را از آدرس/لوکیشن خود وکیل‌ها استخراج کن.
+if ( empty( $home_cities_by_province ) && empty( $home_city_fallback_rows ) ) {
+	$lawyer_ids = get_posts(
+		[
+			'post_type'      => 'hvl_lawyer',
+			'post_status'    => 'publish',
+			'posts_per_page' => 1200,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+		]
+	);
+	$city_counts_by_name = [];
+	foreach ( $lawyer_ids as $lid ) {
+		$lid = (int) $lid;
+		if ( $lid <= 0 ) {
+			continue;
+		}
+		$city_name = '';
+		$city_terms = get_the_terms( $lid, 'hvl_city' );
+		if ( is_array( $city_terms ) && ! empty( $city_terms ) ) {
+			$city_name = trim( (string) $city_terms[0]->name );
+		}
+		if ( '' === $city_name ) {
+			$raw_loc = function_exists( 'hovalvakil_lawyer_card_location_line' )
+				? (string) hovalvakil_lawyer_card_location_line( $lid )
+				: '';
+			if ( '' === trim( $raw_loc ) ) {
+				$raw_loc = (string) get_post_meta( $lid, 'hvl_office_address', true );
+			}
+			$raw_loc = trim( preg_replace( '/\s+/u', ' ', $raw_loc ) );
+			if ( '' !== $raw_loc ) {
+				$parts = preg_split( '/\s*[،,\-–—]\s*/u', $raw_loc );
+				if ( is_array( $parts ) && ! empty( $parts ) ) {
+					$city_name = trim( (string) $parts[0] );
+				}
+			}
+		}
+		if ( '' === $city_name ) {
+			continue;
+		}
+		if ( ! isset( $city_counts_by_name[ $city_name ] ) ) {
+			$city_counts_by_name[ $city_name ] = 0;
+		}
+		$city_counts_by_name[ $city_name ]++;
+	}
+	foreach ( $city_counts_by_name as $city_name => $count ) {
+		$home_city_fallback_rows[] = [
+			'term'           => null,
+			'city_name'      => (string) $city_name,
+			'lawyer_count'   => (int) $count,
+			'use_query_fallback' => true,
+		];
+	}
+	usort(
+		$home_city_fallback_rows,
+		static function ( $a, $b ) {
+			$ca = (int) ( $a['lawyer_count'] ?? 0 );
+			$cb = (int) ( $b['lawyer_count'] ?? 0 );
+			if ( $ca !== $cb ) {
+				return $cb <=> $ca;
+			}
+			return strnatcasecmp( (string) ( $a['city_name'] ?? '' ), (string) ( $b['city_name'] ?? '' ) );
+		}
+	);
 }
 $initial_query = new WP_Query(
 	[
@@ -137,16 +266,14 @@ get_header();
 	<main id="content" class="main-content">
 		<div class="container">
 			<div class="filter-bar">
-				<div class="filter-group" id="home-specialty-filters">
-					<span class="filter-label">فیلتر تخصص:</span>
-					<button class="filter-btn active" data-specialty="">همه</button>
-					<?php if ( ! is_wp_error( $home_specialties ) ) : ?>
-						<?php foreach ( $home_specialties as $spec_term ) : ?>
-							<button class="filter-btn" data-specialty="<?php echo esc_attr( $spec_term->slug ); ?>">
-								<?php echo esc_html( $spec_term->name ); ?>
-							</button>
-						<?php endforeach; ?>
-					<?php endif; ?>
+				<div class="filter-group" id="home-grade-filters">
+					<span class="filter-label"><?php esc_html_e( 'فیلتر مقطع:', 'hello-elementor' ); ?></span>
+					<button type="button" class="filter-btn active" data-grade=""><?php esc_html_e( 'همه', 'hello-elementor' ); ?></button>
+					<?php foreach ( $home_grade_cards as $grade_card ) : ?>
+						<button type="button" class="filter-btn" data-grade="<?php echo esc_attr( $grade_card['slug'] ); ?>">
+							<?php echo esc_html( $grade_card['label'] ); ?>
+						</button>
+					<?php endforeach; ?>
 				</div>
 			</div>
 
@@ -171,7 +298,7 @@ get_header();
 						?>
 						<a href="<?php the_permalink(); ?>" class="lawyer-card lawyer-card--link ghost-border editorial-shadow">
 							<div class="lawyer-card-image-wrapper">
-								<img class="lawyer-card-image" src="<?php echo esc_url( $img ? $img : $profile_fallback_image ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>" />
+								<img class="lawyer-card-image" src="<?php echo esc_url( $img ? $img : $profile_fallback_image ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>"<?php echo $hovalvakil_lawyer_img_onerror; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> />
 							</div>
 							<div class="lawyer-card-content">
 								<h3 class="lawyer-name"><?php the_title(); ?></h3>
@@ -207,27 +334,28 @@ get_header();
 	<section class="specialties py-24 bg-surface px-6">
 		<div class="container text-right">
 			<div class="section-header mb-12">
-				<h2 class="text-3xl font-bold text-primary mb-2">تخصص‌های کلیدی</h2>
-				<a class="section-header-link text-primary font-bold text-sm" href="<?php echo esc_url( home_url( '/takha/' ) ); ?>">
-					مشاهده همه
+				<h2 class="text-3xl font-bold text-primary mb-2"><?php esc_html_e( 'مقطع وکالت', 'hello-elementor' ); ?></h2>
+				<a class="section-header-link text-primary font-bold text-sm" href="<?php echo esc_url( $archive_url ); ?>">
+					<?php esc_html_e( 'مشاهده همه', 'hello-elementor' ); ?>
 					<span class="material-symbols-outlined text-lg">chevron_left</span>
 				</a>
 			</div>
 			<div class="specialty-grid">
-				<?php if ( ! is_wp_error( $home_specialties ) && ! empty( $home_specialties ) ) : ?>
-					<?php foreach ( $home_specialties as $term ) : ?>
-						<?php $specialty_lawyers = (int) ( $home_specialty_lawyer_counts[ (int) $term->term_id ] ?? 0 ); ?>
-						<a class="category-card ghost-border" href="<?php echo esc_url( add_query_arg( [ 'specialty[]' => $term->slug ], $archive_url ) ); ?>">
-							<div class="category-icon-wrapper">
-								<span class="material-symbols-outlined text-primary text-3xl">gavel</span>
-							</div>
-							<h3 class="text-xl font-bold text-primary mb-2"><?php echo esc_html( $term->name ); ?></h3>
-							<p class="text-sm text-on-surface-variant"><?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $specialty_lawyers ) ) ); ?> وکیل</p>
-						</a>
-					<?php endforeach; ?>
-				<?php else : ?>
-					<p class="text-on-surface-variant">هنوز تخصصی ثبت نشده است.</p>
-				<?php endif; ?>
+				<?php foreach ( $home_grade_cards as $grade_card ) : ?>
+					<?php
+					$grade_slug  = $grade_card['slug'];
+					$grade_icon  = $grade_card['icon'];
+					$grade_count = (int) ( $home_grade_counts[ $grade_slug ] ?? 0 );
+					$grade_link  = add_query_arg( 'grade', $grade_slug, $archive_url );
+					?>
+					<a class="category-card ghost-border" href="<?php echo esc_url( $grade_link ); ?>">
+						<div class="category-icon-wrapper">
+							<span class="material-symbols-outlined text-primary text-3xl"><?php echo esc_html( $grade_icon ); ?></span>
+						</div>
+						<h3 class="text-xl font-bold text-primary mb-2"><?php echo esc_html( $grade_card['label'] ); ?></h3>
+						<p class="text-sm text-on-surface-variant"><?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $grade_count ) ) ); ?> <?php esc_html_e( 'وکیل', 'hello-elementor' ); ?></p>
+					</a>
+				<?php endforeach; ?>
 			</div>
 		</div>
 	</section>
@@ -235,42 +363,99 @@ get_header();
 	<section class="cities">
 		<div class="container">
 			<div class="section-header city-section-header">
-				<h2 class="text-2xl font-bold text-primary">جستجو بر اساس شهر</h2>
-				<a class="section-header-link text-primary font-bold text-sm" href="<?php echo esc_url( home_url( '/marakez/' ) ); ?>">
-					مشاهده همه
+				<h2 class="text-2xl font-bold text-primary"><?php esc_html_e( 'جستجو بر اساس استان و شهر', 'hello-elementor' ); ?></h2>
+				<a class="section-header-link text-primary font-bold text-sm" href="<?php echo esc_url( $archive_url ); ?>">
+					<?php esc_html_e( 'مشاهده همه وکلا', 'hello-elementor' ); ?>
 					<span class="material-symbols-outlined text-lg">chevron_left</span>
 				</a>
 			</div>
-			<div class="city-grid">
-				<?php if ( ! is_wp_error( $home_cities ) && ! empty( $home_cities ) ) : ?>
-					<?php foreach ( $home_cities as $city_term ) : ?>
+			<?php if ( ! empty( $home_cities_by_province ) ) : ?>
+				<div class="home-city-by-province">
+					<?php foreach ( $home_cities_by_province as $prov_block ) : ?>
 						<?php
-						$city_lawyers = (int) ( $home_city_lawyer_counts[ (int) $city_term->term_id ] ?? 0 );
+						$province_term = $prov_block['province'];
+						$cities_rows   = $prov_block['cities'];
 						?>
-						<a class="city-card" href="<?php echo esc_url( add_query_arg( [ 'city_term[]' => $city_term->slug ], $archive_url ) ); ?>">
+						<section class="home-province-block">
+							<h3 class="home-province-title"><?php echo esc_html( $province_term->name ); ?></h3>
+							<div class="city-grid home-province-city-grid">
+								<?php foreach ( $cities_rows as $city_row ) : ?>
+									<?php
+									$city_term_obj = $city_row['term'];
+									$city_lawyers  = (int) ( $city_row['lawyer_count'] ?? 0 );
+									$city_href     = add_query_arg(
+										[
+											'city_term[]'     => $city_term_obj->slug,
+											'province_term[]' => $province_term->slug,
+										],
+										$archive_url
+									);
+									?>
+									<a class="city-card" href="<?php echo esc_url( $city_href ); ?>">
+										<div class="city-card-header">
+											<div class="city-link-header">
+												<span class="material-symbols-outlined text-primary">location_on</span>
+												<span class="font-bold text-primary"><?php echo esc_html( $city_term_obj->name ); ?></span>
+											</div>
+											<span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+										</div>
+										<p class="text-xs text-on-surface-variant">
+											<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $city_lawyers ) ) ); ?> <?php esc_html_e( 'وکیل فعال', 'hello-elementor' ); ?>
+										</p>
+									</a>
+								<?php endforeach; ?>
+							</div>
+						</section>
+					<?php endforeach; ?>
+				</div>
+			<?php elseif ( ! empty( $home_city_fallback_rows ) ) : ?>
+				<div class="city-grid">
+					<?php foreach ( $home_city_fallback_rows as $city_row ) : ?>
+						<?php
+						$city_term_obj = $city_row['term'] ?? null;
+						$city_name     = $city_term_obj instanceof WP_Term ? $city_term_obj->name : (string) ( $city_row['city_name'] ?? '' );
+						$city_lawyers  = (int) ( $city_row['lawyer_count'] ?? 0 );
+						$use_q_fallback = ! empty( $city_row['use_query_fallback'] );
+						if ( ! $use_q_fallback && $city_term_obj instanceof WP_Term ) {
+							$city_href = add_query_arg(
+								[
+									'city_term[]' => $city_term_obj->slug,
+								],
+								$archive_url
+							);
+						} else {
+							$city_href = add_query_arg(
+								[
+									'q' => $city_name,
+								],
+								$archive_url
+							);
+						}
+						?>
+						<a class="city-card" href="<?php echo esc_url( $city_href ); ?>">
 							<div class="city-card-header">
 								<div class="city-link-header">
 									<span class="material-symbols-outlined text-primary">location_on</span>
-									<span class="font-bold text-primary"><?php echo esc_html( $city_term->name ); ?></span>
+									<span class="font-bold text-primary"><?php echo esc_html( $city_name ); ?></span>
 								</div>
 								<span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
 							</div>
 							<p class="text-xs text-on-surface-variant">
-								<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $city_lawyers ) ) ); ?> وکیل فعال
+								<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $city_lawyers ) ) ); ?> <?php esc_html_e( 'وکیل فعال', 'hello-elementor' ); ?>
 							</p>
 						</a>
 					<?php endforeach; ?>
-				<?php else : ?>
-					<p class="text-on-surface-variant">هنوز شهری ثبت نشده است.</p>
-				<?php endif; ?>
-			</div>
+				</div>
+			<?php else : ?>
+				<p class="text-on-surface-variant"><?php esc_html_e( 'هنوز دادهٔ شهر برای وکلا ثبت نشده است.', 'hello-elementor' ); ?></p>
+			<?php endif; ?>
 		</div>
 	</section>
 
 	<script>
 		const apiBase = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/lawyers' ) ) ); ?>;
-		const specialtyApi = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/specialties' ) ) ); ?>;
 		const archiveUrl = <?php echo wp_json_encode( esc_url_raw( $archive_url ) ); ?>;
+		const homeGradeSlugs = <?php echo wp_json_encode( array_column( $home_grade_cards, 'slug' ), JSON_UNESCAPED_UNICODE ); ?>;
 		const fallbackImage = <?php echo wp_json_encode( esc_url_raw( $profile_fallback_image ) ); ?>;
 		const initialTotalPages = <?php echo (int) $initial_total_pages; ?>;
 
@@ -278,13 +463,13 @@ get_header();
 		const queryInput = document.getElementById('home-search-input');
 		const triggerBtn = document.getElementById('home-search-trigger');
 		const loadMoreBtn = document.getElementById('home-load-more-btn');
-		const specialtyFilterWrap = document.getElementById('home-specialty-filters');
+		const gradeFilterWrap = document.getElementById('home-grade-filters');
 		const liveResultsEl = document.getElementById('home-live-results');
 
 		const GRID_PER_PAGE = 16;
 		let currentPage = 1;
 		let totalPages = initialTotalPages;
-		let selectedSpecialty = '';
+		let selectedGrade = '';
 		let liveTimer = null;
 		let liveAbortController = null;
 		const liveSearchCache = new Map();
@@ -304,6 +489,10 @@ get_header();
 				.replaceAll('>', '&gt;')
 				.replaceAll('"', '&quot;')
 				.replaceAll("'", '&#039;');
+		}
+
+		function hvlLawyerImageOnerrorAttr() {
+			return ` onerror="this.onerror=null;this.src=${JSON.stringify(fallbackImage)};this.classList.add('hvl-img-fallback');"`;
 		}
 
 		function specialtiesMarkup(item) {
@@ -341,32 +530,6 @@ get_header();
 			gridEl.innerHTML = html;
 		}
 
-		async function hydrateSpecialtyFilters() {
-			if (!specialtyFilterWrap) return;
-			try {
-				const res = await fetch(specialtyApi, { credentials: 'same-origin' });
-				if (!res.ok) throw new Error('specialties_failed');
-				const data = await res.json();
-				const terms = Array.isArray(data.items) ? data.items : [];
-				const dynamicButtons = terms.map((term) => `
-					<button class="filter-btn" data-specialty="${escapeHtml(term.slug || '')}">
-						${escapeHtml(term.name || '')}
-					</button>
-				`).join('');
-				specialtyFilterWrap.innerHTML = `
-					<span class="filter-label">فیلتر تخصص:</span>
-					<button class="filter-btn ${selectedSpecialty ? '' : 'active'}" data-specialty="">همه</button>
-					${dynamicButtons}
-				`;
-				if (selectedSpecialty) {
-					const activeBtn = specialtyFilterWrap.querySelector(`.filter-btn[data-specialty="${CSS.escape(selectedSpecialty)}"]`);
-					if (activeBtn) activeBtn.classList.add('active');
-				}
-			} catch (e) {
-				// Keep SSR fallback buttons.
-			}
-		}
-
 		function renderCards(items, append = false) {
 			if (!append) gridEl.innerHTML = '';
 			if (!items.length && !append) {
@@ -385,7 +548,7 @@ get_header();
 				return `
 				<a href="${escapeHtml(item.permalink || '#')}" class="lawyer-card lawyer-card--link ghost-border editorial-shadow">
 					<div class="lawyer-card-image-wrapper">
-						<img class="lawyer-card-image" src="${escapeHtml(item.image || fallbackImage)}" alt="${escapeHtml(item.name || '')}" />
+						<img class="lawyer-card-image" src="${escapeHtml(item.image || fallbackImage)}" alt="${escapeHtml(item.name || '')}"${hvlLawyerImageOnerrorAttr()} />
 					</div>
 					<div class="lawyer-card-content">
 						<h3 class="lawyer-name">${escapeHtml(item.name || '')}</h3>
@@ -407,7 +570,7 @@ get_header();
 				page: String(page),
 				per_page: String(GRID_PER_PAGE),
 			});
-			if (selectedSpecialty) params.set('specialty', selectedSpecialty);
+			if (selectedGrade && homeGradeSlugs.includes(selectedGrade)) params.set('grade', selectedGrade);
 			if (q) params.set('q', q);
 			const cacheKey = params.toString();
 
@@ -553,7 +716,7 @@ get_header();
 					: '';
 				return `
 				<a class="home-live-item" href="${escapeHtml(item.permalink || '#')}">
-					<img class="home-live-item-image" src="${escapeHtml(item.image || fallbackImage)}" alt="${escapeHtml(item.name || '')}" />
+					<img class="home-live-item-image" src="${escapeHtml(item.image || fallbackImage)}" alt="${escapeHtml(item.name || '')}"${hvlLawyerImageOnerrorAttr()} />
 					<div class="home-live-item-content">
 						<div class="home-live-item-title">${escapeHtml(item.name || '')}</div>
 						${metaHtml}
@@ -579,7 +742,7 @@ get_header();
 			}
 
 			const params = new URLSearchParams({ q, per_page: '10', page: '1' });
-			if (selectedSpecialty) params.set('specialty', selectedSpecialty);
+			if (selectedGrade && homeGradeSlugs.includes(selectedGrade)) params.set('grade', selectedGrade);
 			const cacheKey = params.toString();
 
 			if (liveSearchCache.has(cacheKey)) {
@@ -647,22 +810,21 @@ get_header();
 			fetchLawyers({ page: nextPage, append: true });
 		});
 
-		specialtyFilterWrap?.addEventListener('click', (event) => {
+		gradeFilterWrap?.addEventListener('click', (event) => {
 			const target = event.target;
 			if (!(target instanceof HTMLElement)) return;
 			const btn = target.closest('.filter-btn');
 			if (!(btn instanceof HTMLElement)) return;
 
-			selectedSpecialty = btn.dataset.specialty || '';
-			specialtyFilterWrap.querySelectorAll('.filter-btn').forEach((el) => {
+			const next = (btn.dataset.grade || '').trim();
+			selectedGrade = homeGradeSlugs.includes(next) ? next : '';
+			gradeFilterWrap.querySelectorAll('.filter-btn').forEach((el) => {
 				el.classList.remove('active');
 			});
 			btn.classList.add('active');
 			fetchLawyers({ page: 1, skeleton: true });
 			fetchLiveResults();
 		});
-
-		hydrateSpecialtyFilters();
 
 		document.addEventListener('click', (event) => {
 			const target = event.target;
@@ -749,6 +911,25 @@ get_header();
 				padding-left: 0 !important;
 				padding-right: 0 !important;
 			}
+		}
+		.home-city-by-province {
+			display: flex;
+			flex-direction: column;
+			gap: 2rem;
+		}
+		.home-province-block {
+			text-align: right;
+		}
+		.home-province-title {
+			font-size: 1.125rem;
+			font-weight: 700;
+			color: #0f3d75;
+			margin: 0 0 0.75rem;
+			padding-bottom: 0.35rem;
+			border-bottom: 1px solid #e2e8f0;
+		}
+		.home-province-city-grid {
+			margin-top: 0.25rem;
 		}
 	</style>
 <?php get_footer(); ?>

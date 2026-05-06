@@ -11,6 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $archive_url = get_post_type_archive_link( 'hvl_lawyer' );
 $rezerv_url  = home_url( '/rezerv' );
+$hvl_marakez_placeholder = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+	? hovalvakil_theme_lawyer_placeholder_url()
+	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+$hvl_marakez_img_onerror = function_exists( 'hovalvakil_lawyer_image_onerror_placeholder_attr' )
+	? hovalvakil_lawyer_image_onerror_placeholder_attr()
+	: '';
 $centers_total = (int) wp_count_posts( 'hvl_center' )->publish;
 
 $center_query = new WP_Query(
@@ -142,7 +148,7 @@ get_header();
 						$archive_link = $city_slug ? add_query_arg( [ 'city_term[]' => $city_slug ], $archive_url ) : $archive_url;
 						?>
 						<article class="marakez-card">
-							<img src="<?php echo esc_url( $image ? $image : ( function_exists( 'hovalvakil_theme_lawyer_placeholder_url' ) ? hovalvakil_theme_lawyer_placeholder_url() : get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg' ) ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>" />
+							<img src="<?php echo esc_url( $image ? $image : $hvl_marakez_placeholder ); ?>" alt="<?php echo esc_attr( get_the_title() ); ?>"<?php echo $hvl_marakez_img_onerror; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> />
 							<div class="marakez-card-body">
 								<h3><?php the_title(); ?></h3>
 								<p><?php echo esc_html( wp_trim_words( get_the_excerpt() ? get_the_excerpt() : get_the_content(), 18 ) ); ?></p>
@@ -189,6 +195,10 @@ get_header();
 	<script>
 		(function() {
 			const centersApi = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/centers' ) ) ); ?>;
+			const marakezImgPlaceholder = <?php echo wp_json_encode( esc_url_raw( $hvl_marakez_placeholder ) ); ?>;
+			function marakezImgOnerrorAttr() {
+				return ` onerror="this.onerror=null;this.src=${JSON.stringify(marakezImgPlaceholder)};this.classList.add('hvl-img-fallback');"`;
+			}
 			const listEl = document.getElementById('marakez-results-list');
 			const countEl = document.getElementById('marakez-result-count');
 			const searchInput = document.getElementById('marakez-search-input');
@@ -259,7 +269,7 @@ get_header();
 						: archiveUrl;
 					return `
 						<article class="marakez-card">
-							<img src="${esc(item.image)}" alt="${esc(item.title)}" />
+							<img src="${esc(item.image || marakezImgPlaceholder)}" alt="${esc(item.title)}"${marakezImgOnerrorAttr()} />
 							<div class="marakez-card-body">
 								<h3>${esc(item.title)}</h3>
 								<p>${esc(item.content || '')}</p>

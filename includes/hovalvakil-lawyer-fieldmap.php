@@ -158,18 +158,32 @@ function hovalvakil_lawyer_get_province_name( $post_id ) {
 /**
  * Featured image URL, or hvl_photo_url from import when thumbnail not set.
  *
+ * آدرس‌های نامعتبر یا نسبیِ بدون دامنه رد می‌شوند تا مرورگر آیکن «تصویر شکسته» نشان ندهد.
+ *
  * @param int    $post_id Post ID.
  * @param string $size    Image size.
- * @return string
+ * @return string Absolute URL or empty string.
  */
 function hovalvakil_lawyer_profile_image_url( $post_id, $size = 'medium' ) {
 	$post_id = (int) $post_id;
 	$thumb   = get_the_post_thumbnail_url( $post_id, $size );
 	if ( is_string( $thumb ) && '' !== $thumb ) {
-		return $thumb;
+		return esc_url_raw( $thumb );
 	}
-	$url = (string) get_post_meta( $post_id, 'hvl_photo_url', true );
-	return '' !== $url ? $url : '';
+	$url = trim( (string) get_post_meta( $post_id, 'hvl_photo_url', true ) );
+	if ( '' === $url ) {
+		return '';
+	}
+	// Protocol-relative (//cdn.example/…).
+	if ( 0 === strpos( $url, '//' ) ) {
+		$url = ( is_ssl() ? 'https:' : 'http:' ) . $url;
+	} elseif ( 0 === strpos( $url, '/' ) && 0 !== strpos( $url, '//' ) ) {
+		$url = home_url( $url );
+	}
+	if ( ! function_exists( 'wp_http_validate_url' ) || ! wp_http_validate_url( $url ) ) {
+		return '';
+	}
+	return esc_url_raw( $url );
 }
 
 /**
@@ -179,6 +193,29 @@ function hovalvakil_lawyer_profile_image_url( $post_id, $size = 'medium' ) {
  */
 function hovalvakil_theme_lawyer_placeholder_url() {
 	return HELLO_THEME_IMAGES_URL . 'lawyer-placeholder.svg';
+}
+
+/**
+ * Attribute onerror برای تگ img: در صورت ۴۰۴ یا لینک خراب، جایگزینی با placeholder تم.
+ *
+ * @return string Space + onerror="…" (خالی اگر URL پلیس‌هولدر ساخته نشود).
+ */
+function hovalvakil_lawyer_image_onerror_placeholder_attr() {
+	static $cached = null;
+	if ( null !== $cached ) {
+		return $cached;
+	}
+	$url = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
+		? hovalvakil_theme_lawyer_placeholder_url()
+		: (string) get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+	$url = esc_url_raw( $url );
+	if ( '' === $url ) {
+		$cached = '';
+		return $cached;
+	}
+	$js     = 'this.onerror=null;this.src=' . wp_json_encode( $url ) . ';this.classList.add(\'hvl-img-fallback\');';
+	$cached = ' onerror="' . esc_attr( $js ) . '"';
+	return $cached;
 }
 
 /**
@@ -268,4 +305,135 @@ function hovalvakil_lawyer_card_license_line( $post_id ) {
 		return '';
 	}
 	return 'شمارهٔ پروانه ' . hovalvakil_lawyer_digits_to_fa( $no );
+}
+
+/**
+ * Guess province/city from free-text office address/location.
+ *
+ * @param string $raw Raw location string.
+ * @return array{province:string,city:string}
+ */
+function hovalvakil_guess_province_city_from_text( $raw ) {
+	$raw = trim( preg_replace( '/\s+/u', ' ', (string) $raw ) );
+	if ( '' === $raw ) {
+		return [ 'province' => '', 'city' => '' ];
+	}
+	$parts = preg_split( '/\s*[،,\-–—]\s*/u', $raw );
+	$parts = is_array( $parts ) ? array_values( array_filter( array_map( 'trim', $parts ) ) ) : [];
+	if ( empty( $parts ) ) {
+		return [ 'province' => '', 'city' => '' ];
+	}
+	$province = $parts[0] ?? '';
+	$city     = $parts[1] ?? '';
+	if ( '' === $city && '' !== $province ) {
+		// Fallback when only one location token exists.
+		$city = $province;
+	}
+	return [
+		'province' => (string) $province,
+		'city'     => (string) $city,
+	];
+}
+
+/**
+ * Resolve existing term by name/slug; create if missing.
+ *
+ * @param string $name     Term name.
+ * @param string $taxonomy Taxonomy slug.
+ * @return int Term ID or 0.
+ */
+function hovalvakil_get_or_create_term_id_by_name( $name, $taxonomy ) {
+	$name = trim( (string) $name );
+	if ( '' === $name ) {
+		return 0;
+	}
+	$t = get_term_by( 'name', $name, $taxonomy );
+	if ( $t && ! is_wp_error( $t ) ) {
+		return (int) $t->term_id;
+	}
+	$t = get_term_by( 'slug', sanitize_title( $name ), $taxonomy );
+	if ( $t && ! is_wp_error( $t ) ) {
+		return (int) $t->term_id;
+	}
+	$ins = wp_insert_term( $name, $taxonomy );
+	if ( is_wp_error( $ins ) ) {
+		return 0;
+	}
+	return (int) ( $ins['term_id'] ?? 0 );
+}
+
+/**
+ * Backfill missing city/province taxonomy terms for lawyers using location text.
+ *
+ * @param array{limit?:int,offset?:int,dry_run?:bool} $args Args.
+ * @return array{processed:int,updated:int,errors:int}
+ */
+function hovalvakil_backfill_lawyer_city_province_terms( array $args = [] ) {
+	$limit   = isset( $args['limit'] ) ? max( 1, (int) $args['limit'] ) : 2000;
+	$offset  = isset( $args['offset'] ) ? max( 0, (int) $args['offset'] ) : 0;
+	$dry_run = ! empty( $args['dry_run'] );
+
+	$ids = get_posts(
+		[
+			'post_type'      => 'hvl_lawyer',
+			'post_status'    => 'publish',
+			'posts_per_page' => $limit,
+			'offset'         => $offset,
+			'fields'         => 'ids',
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+			'no_found_rows'  => true,
+		]
+	);
+
+	$out = [ 'processed' => 0, 'updated' => 0, 'errors' => 0 ];
+	foreach ( $ids as $post_id ) {
+		$post_id = (int) $post_id;
+		if ( $post_id <= 0 ) {
+			continue;
+		}
+		$out['processed']++;
+
+		$city_terms = get_the_terms( $post_id, 'hvl_city' );
+		$prov_terms = get_the_terms( $post_id, 'hvl_province' );
+		$has_city   = is_array( $city_terms ) && ! empty( $city_terms );
+		$has_prov   = is_array( $prov_terms ) && ! empty( $prov_terms );
+		if ( $has_city && $has_prov ) {
+			continue;
+		}
+
+		$raw_loc = function_exists( 'hovalvakil_lawyer_card_location_line' ) ? hovalvakil_lawyer_card_location_line( $post_id ) : '';
+		if ( '' === trim( (string) $raw_loc ) ) {
+			$raw_loc = (string) get_post_meta( $post_id, 'hvl_office_address', true );
+		}
+		$guess = hovalvakil_guess_province_city_from_text( (string) $raw_loc );
+		if ( '' === $guess['city'] && '' === $guess['province'] ) {
+			$out['errors']++;
+			continue;
+		}
+
+		$city_id = $has_city ? 0 : hovalvakil_get_or_create_term_id_by_name( $guess['city'], 'hvl_city' );
+		$prov_id = $has_prov ? 0 : hovalvakil_get_or_create_term_id_by_name( $guess['province'], 'hvl_province' );
+
+		if ( ! $dry_run ) {
+			if ( $city_id > 0 ) {
+				$ok = wp_set_object_terms( $post_id, [ $city_id ], 'hvl_city', false );
+				if ( is_wp_error( $ok ) ) {
+					$out['errors']++;
+					continue;
+				}
+			}
+			if ( $prov_id > 0 ) {
+				$ok = wp_set_object_terms( $post_id, [ $prov_id ], 'hvl_province', false );
+				if ( is_wp_error( $ok ) ) {
+					$out['errors']++;
+					continue;
+				}
+			}
+		}
+		if ( $city_id > 0 || $prov_id > 0 ) {
+			$out['updated']++;
+		}
+	}
+	return $out;
 }

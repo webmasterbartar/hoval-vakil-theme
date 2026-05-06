@@ -12,12 +12,16 @@
     top: 0;
     z-index: 2600;
     width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
     background: #ffffff;
     box-shadow: 0 4px 32px rgba(4, 21, 52, 0.05);
 }
 
 .hvl-header-utility {
     width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
     background: rgba(242, 243, 247, 0.9); /* surface-container-low */
     color: var(--on-surface-variant, #45464e);
     font-size: 0.95rem;
@@ -31,6 +35,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 1.25rem;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .hvl-header-utility-left,
@@ -56,13 +62,25 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .hvl-header-utility-phone {
     margin-right: auto;
 }
 
+.hvl-header-utility-address span:last-child,
+.hvl-header-utility-phone span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .hvl-header-utility-icon {
+    flex-shrink: 0;
     color: #c9a84c; /* matches heder.html accent */
     font-size: 1.05rem;
     line-height: 1;
@@ -89,6 +107,8 @@
 
 .hvl-header-main {
     width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
     padding: 0.85rem 0;
 }
 
@@ -168,6 +188,63 @@
 }
 
 @media (max-width: 900px) {
+    .hvl-header-utility {
+        font-size: 0.82rem;
+    }
+
+    .hvl-header-utility-inner {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.35rem 0.75rem;
+    }
+
+    .hvl-header-utility-left {
+        flex: 1 1 100%;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+    }
+
+    .hvl-header-utility-left span,
+    .hvl-header-utility-right span {
+        white-space: normal;
+    }
+
+    .hvl-header-utility-address,
+    .hvl-header-utility-phone {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .hvl-header-utility-address span:last-child,
+    .hvl-header-utility-phone span:last-child {
+        flex: 1 1 12rem;
+        min-width: 0;
+    }
+
+    /* موبایل: فقط شماره تماس در نوار بالا نمایش داده شود. */
+    .hvl-header-utility-address {
+        display: none;
+    }
+
+    .hvl-header-utility-left {
+        gap: 0;
+    }
+
+    .hvl-header-utility-phone {
+        margin: 0;
+    }
+
+    .hvl-header-utility-phone {
+        margin-right: 0;
+    }
+
     .hvl-header-utility-links {
         display: none;
     }
@@ -181,8 +258,52 @@
         display: inline-flex;
     }
 
+    /*
+     * لوگو دقیقاً وسط ردیف، منو روی همان خط و تراز عمودی (بدون گرید که با RTL/DOM جابه‌جا می‌شد).
+     */
     .hvl-header-main-inner {
-        flex-direction: row-reverse;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        width: 100%;
+        min-height: 2.75rem;
+        min-width: 0;
+        max-width: 100%;
+        gap: 0.5rem;
+        /* inset دکمه (۰.۵rem) + عرض دکمه (۲.۵rem) + فاصله تا لوگو */
+        padding-inline-start: 3.35rem;
+    }
+
+    .hvl-header-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 1 auto;
+        max-width: 100%;
+        min-width: 0;
+        margin-inline: auto;
+        text-align: center;
+    }
+
+    .hvl-header-logo a {
+        display: inline-block;
+        line-height: 1.2;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .hvl-header-actions {
+        position: absolute;
+        /* در RTL: لبهٔ راست گوشی؛ کمی فاصله تا نچسبد به گوشه */
+        inset-inline-start: 0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
     }
 }
 
