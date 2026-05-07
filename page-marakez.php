@@ -13,7 +13,7 @@ $archive_url = get_post_type_archive_link( 'hvl_lawyer' );
 $rezerv_url  = home_url( '/rezerv' );
 $hvl_marakez_placeholder = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 	? hovalvakil_theme_lawyer_placeholder_url()
-	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 $hvl_marakez_img_onerror = function_exists( 'hovalvakil_lawyer_image_onerror_placeholder_attr' )
 	? hovalvakil_lawyer_image_onerror_placeholder_attr()
 	: '';

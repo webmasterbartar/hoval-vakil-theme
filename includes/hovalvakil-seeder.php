@@ -298,7 +298,7 @@ function hovalvakil_seed_demo_data_once() {
 		update_post_meta( $post_id, 'hvl_office_working_hours', 'شنبه تا چهارشنبه ۹:۰۰ تا ۱۸:۰۰' );
 		$map_placeholder = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 			? hovalvakil_theme_lawyer_placeholder_url()
-			: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+			: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 		update_post_meta( $post_id, 'hvl_office_map_image', $map_placeholder );
 	}
 

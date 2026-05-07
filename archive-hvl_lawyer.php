@@ -317,7 +317,7 @@ $lawyers_query = new WP_Query( $query_args );
 
 $hvl_archive_lawyer_placeholder = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 	? hovalvakil_theme_lawyer_placeholder_url()
-	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 $hvl_archive_img_onerror          = function_exists( 'hovalvakil_lawyer_image_onerror_placeholder_attr' )
 	? hovalvakil_lawyer_image_onerror_placeholder_attr()
 	: '';
@@ -546,7 +546,7 @@ get_header();
 					if ( ! $avatar_url ) {
 						$avatar_url = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 							? hovalvakil_theme_lawyer_placeholder_url()
-							: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+							: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 					}
 
 					$specialty_term = null;

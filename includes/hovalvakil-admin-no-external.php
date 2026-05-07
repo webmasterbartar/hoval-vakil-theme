@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 function hovalvakil_local_admin_avatar_url() {
 	return function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 		? (string) hovalvakil_theme_lawyer_placeholder_url()
-		: (string) get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+		: (string) get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 }
 
 /**

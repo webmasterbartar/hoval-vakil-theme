@@ -461,7 +461,7 @@ function hovalvakil_rest_get_centers( WP_REST_Request $request ) {
 		if ( ! $image ) {
 			$image = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 				? hovalvakil_theme_lawyer_placeholder_url()
-				: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+				: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 		}
 
 		$items[] = [
@@ -709,7 +709,7 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		if ( ! $img ) {
 			$img = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 				? hovalvakil_theme_lawyer_placeholder_url()
-				: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+				: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 		}
 
 		$city_terms  = get_the_terms( $post_id, 'hvl_city' );
@@ -995,7 +995,7 @@ function hovalvakil_rest_get_lawyer_by_id( WP_REST_Request $request ) {
 	if ( ! $image ) {
 		$image = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 			? hovalvakil_theme_lawyer_placeholder_url()
-			: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
+			: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
 	}
 
 	$spec_terms  = get_the_terms( $lawyer_id, 'hvl_specialty' );
