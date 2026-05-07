@@ -4328,3 +4328,10 @@ input, select {
     }
 }
 
+/* --- Final overrides: archive layout + 5-column lawyer grids --- */
+@media (min-width: 1200px) {
+    .lawyer-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    }
+}
+

@@ -230,6 +230,7 @@ require get_template_directory() . '/includes/hovalvakil-importer.php';
 require get_template_directory() . '/includes/hovalvakil-media-control.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-purge.php';
 require get_template_directory() . '/includes/hovalvakil-admin-no-external.php';
+require get_template_directory() . '/includes/hovalvakil-lawyer-photo-sync.php';
 require get_template_directory() . '/includes/hovalvakil-admin-reservations.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-meta.php';
 
