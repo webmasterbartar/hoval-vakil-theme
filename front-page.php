@@ -39,7 +39,7 @@ if ( ! function_exists( 'hovalvakil_to_fa_digits' ) ) {
 $archive_url  = get_post_type_archive_link( 'hvl_lawyer' );
 $profile_fallback_image = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 	? hovalvakil_theme_lawyer_placeholder_url()
-	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
+	: get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
 $hovalvakil_lawyer_img_onerror = function_exists( 'hovalvakil_lawyer_image_onerror_placeholder_attr' )
 	? hovalvakil_lawyer_image_onerror_placeholder_attr()
 	: '';
@@ -111,67 +111,6 @@ foreach ( $home_cities_by_province as &$prov_block ) {
 	);
 }
 unset( $prov_block );
-
-$home_province_rows = [];
-foreach ( $home_cities_by_province as $prov_block ) {
-	$province_term = $prov_block['province'];
-	$cities_rows   = isset( $prov_block['cities'] ) && is_array( $prov_block['cities'] ) ? $prov_block['cities'] : [];
-	$province_count = 0;
-	foreach ( $cities_rows as $city_row ) {
-		$province_count += (int) ( $city_row['lawyer_count'] ?? 0 );
-	}
-	if ( $province_count <= 0 ) {
-		continue;
-	}
-	$home_province_rows[] = [
-		'term'         => $province_term,
-		'lawyer_count' => $province_count,
-	];
-}
-
-if ( empty( $home_province_rows ) ) {
-	$home_province_terms = get_terms(
-		[
-			'taxonomy'   => 'hvl_province',
-			'hide_empty' => false,
-			'orderby'    => 'name',
-			'order'      => 'ASC',
-		]
-	);
-	if ( ! is_wp_error( $home_province_terms ) && ! empty( $home_province_terms ) ) {
-		global $wpdb;
-		$province_counts = [];
-		$rows            = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS lawyer_count
-				FROM {$wpdb->posts} p
-				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = %s
-				WHERE p.post_type = %s AND p.post_status = %s
-				GROUP BY tt.term_id",
-				'hvl_province',
-				'hvl_lawyer',
-				'publish'
-			),
-			ARRAY_A
-		);
-		if ( is_array( $rows ) ) {
-			foreach ( $rows as $row ) {
-				$province_counts[ (int) $row['term_id'] ] = (int) $row['lawyer_count'];
-			}
-		}
-		foreach ( $home_province_terms as $province_term ) {
-			$count = (int) ( $province_counts[ (int) $province_term->term_id ] ?? 0 );
-			if ( $count <= 0 ) {
-				continue;
-			}
-			$home_province_rows[] = [
-				'term'         => $province_term,
-				'lawyer_count' => $count,
-			];
-		}
-	}
-}
 
 // Fallback: اگر جفت استان+شهر در داده‌ها کامل نبود، شهرها را مستقیم از taxonomy وکیل‌ها نمایش بده.
 $home_city_fallback_rows = [];
@@ -424,41 +363,91 @@ get_header();
 	<section class="cities">
 		<div class="container">
 			<div class="section-header city-section-header">
-				<h2 class="text-2xl font-bold text-primary"><?php esc_html_e( 'جستجو بر اساس استان', 'hello-elementor' ); ?></h2>
+				<h2 class="text-2xl font-bold text-primary"><?php esc_html_e( 'جستجو بر اساس استان و شهر', 'hello-elementor' ); ?></h2>
 				<a class="section-header-link text-primary font-bold text-sm" href="<?php echo esc_url( $archive_url ); ?>">
 					<?php esc_html_e( 'مشاهده همه وکلا', 'hello-elementor' ); ?>
 					<span class="material-symbols-outlined text-lg">chevron_left</span>
 				</a>
 			</div>
-			<?php if ( ! empty( $home_province_rows ) ) : ?>
-				<div class="city-grid">
-					<?php foreach ( $home_province_rows as $province_row ) : ?>
+			<?php if ( ! empty( $home_cities_by_province ) ) : ?>
+				<div class="home-city-by-province">
+					<?php foreach ( $home_cities_by_province as $prov_block ) : ?>
 						<?php
-						$province_term = $province_row['term'];
-						$province_lawyers = (int) ( $province_row['lawyer_count'] ?? 0 );
-						$province_href = add_query_arg(
-							[
-								'province_term[]' => $province_term->slug,
-							],
-							$archive_url
-						);
+						$province_term = $prov_block['province'];
+						$cities_rows   = $prov_block['cities'];
 						?>
-						<a class="city-card" href="<?php echo esc_url( $province_href ); ?>">
+						<section class="home-province-block">
+							<h3 class="home-province-title"><?php echo esc_html( $province_term->name ); ?></h3>
+							<div class="city-grid home-province-city-grid">
+								<?php foreach ( $cities_rows as $city_row ) : ?>
+									<?php
+									$city_term_obj = $city_row['term'];
+									$city_lawyers  = (int) ( $city_row['lawyer_count'] ?? 0 );
+									$city_href     = add_query_arg(
+										[
+											'city_term[]'     => $city_term_obj->slug,
+											'province_term[]' => $province_term->slug,
+										],
+										$archive_url
+									);
+									?>
+									<a class="city-card" href="<?php echo esc_url( $city_href ); ?>">
+										<div class="city-card-header">
+											<div class="city-link-header">
+												<span class="material-symbols-outlined text-primary">location_on</span>
+												<span class="font-bold text-primary"><?php echo esc_html( $city_term_obj->name ); ?></span>
+											</div>
+											<span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
+										</div>
+										<p class="text-xs text-on-surface-variant">
+											<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $city_lawyers ) ) ); ?> <?php esc_html_e( 'وکیل فعال', 'hello-elementor' ); ?>
+										</p>
+									</a>
+								<?php endforeach; ?>
+							</div>
+						</section>
+					<?php endforeach; ?>
+				</div>
+			<?php elseif ( ! empty( $home_city_fallback_rows ) ) : ?>
+				<div class="city-grid">
+					<?php foreach ( $home_city_fallback_rows as $city_row ) : ?>
+						<?php
+						$city_term_obj = $city_row['term'] ?? null;
+						$city_name     = $city_term_obj instanceof WP_Term ? $city_term_obj->name : (string) ( $city_row['city_name'] ?? '' );
+						$city_lawyers  = (int) ( $city_row['lawyer_count'] ?? 0 );
+						$use_q_fallback = ! empty( $city_row['use_query_fallback'] );
+						if ( ! $use_q_fallback && $city_term_obj instanceof WP_Term ) {
+							$city_href = add_query_arg(
+								[
+									'city_term[]' => $city_term_obj->slug,
+								],
+								$archive_url
+							);
+						} else {
+							$city_href = add_query_arg(
+								[
+									'q' => $city_name,
+								],
+								$archive_url
+							);
+						}
+						?>
+						<a class="city-card" href="<?php echo esc_url( $city_href ); ?>">
 							<div class="city-card-header">
 								<div class="city-link-header">
-									<span class="material-symbols-outlined text-primary">map</span>
-									<span class="font-bold text-primary"><?php echo esc_html( $province_term->name ); ?></span>
+									<span class="material-symbols-outlined text-primary">location_on</span>
+									<span class="font-bold text-primary"><?php echo esc_html( $city_name ); ?></span>
 								</div>
 								<span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
 							</div>
 							<p class="text-xs text-on-surface-variant">
-								<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $province_lawyers ) ) ); ?> <?php esc_html_e( 'وکیل فعال', 'hello-elementor' ); ?>
+								<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $city_lawyers ) ) ); ?> <?php esc_html_e( 'وکیل فعال', 'hello-elementor' ); ?>
 							</p>
 						</a>
 					<?php endforeach; ?>
 				</div>
 			<?php else : ?>
-				<p class="text-on-surface-variant"><?php esc_html_e( 'هنوز دادهٔ استان برای وکلا ثبت نشده است.', 'hello-elementor' ); ?></p>
+				<p class="text-on-surface-variant"><?php esc_html_e( 'هنوز دادهٔ شهر برای وکلا ثبت نشده است.', 'hello-elementor' ); ?></p>
 			<?php endif; ?>
 		</div>
 	</section>

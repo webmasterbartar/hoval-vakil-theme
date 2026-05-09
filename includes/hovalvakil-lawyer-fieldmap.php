@@ -192,7 +192,7 @@ function hovalvakil_lawyer_profile_image_url( $post_id, $size = 'medium' ) {
  * @return string Absolute URL (not HTML-escaped).
  */
 function hovalvakil_theme_lawyer_placeholder_url() {
-	return HELLO_THEME_IMAGES_URL . 'lawyer-placeholder.png';
+	return HELLO_THEME_IMAGES_URL . 'lawyer-placeholder.svg';
 }
 
 /**
@@ -207,7 +207,7 @@ function hovalvakil_lawyer_image_onerror_placeholder_attr() {
 	}
 	$url = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
 		? hovalvakil_theme_lawyer_placeholder_url()
-		: (string) get_template_directory_uri() . '/assets/images/lawyer-placeholder.png';
+		: (string) get_template_directory_uri() . '/assets/images/lawyer-placeholder.svg';
 	$url = esc_url_raw( $url );
 	if ( '' === $url ) {
 		$cached = '';

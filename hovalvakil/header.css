@@ -35,9 +35,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 1.25rem;
-    width: min(100%, var(--container-max-width, 1200px));
-    margin-inline: auto;
-    padding-inline: var(--container-padding, 1rem);
+    max-width: 100%;
     min-width: 0;
 }
 
