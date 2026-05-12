@@ -160,6 +160,35 @@ $province_terms = get_terms(
 	]
 );
 
+// When province filter is active, city dropdown shows only cities that have lawyers in selected province(s).
+if ( ! empty( $province_terms_selected ) && ! is_wp_error( $city_terms ) && function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' ) ) {
+	$pairs = hovalvakil_home_city_province_pairs_for_lawyers();
+	$allowed_city_ids = [];
+	foreach ( $pairs as $pair ) {
+		$prov = $pair['province'] ?? null;
+		$city = $pair['city'] ?? null;
+		if ( ! $prov instanceof WP_Term || ! $city instanceof WP_Term ) {
+			continue;
+		}
+		if ( in_array( (string) $prov->slug, $province_terms_selected, true ) ) {
+			$allowed_city_ids[] = (int) $city->term_id;
+		}
+	}
+	$allowed_city_ids = array_values( array_unique( array_filter( $allowed_city_ids ) ) );
+	if ( ! empty( $allowed_city_ids ) ) {
+		$city_terms = array_values(
+			array_filter(
+				$city_terms,
+				static function ( $term ) use ( $allowed_city_ids ) {
+					return $term instanceof WP_Term && in_array( (int) $term->term_id, $allowed_city_ids, true );
+				}
+			)
+		);
+	} else {
+		$city_terms = [];
+	}
+}
+
 // Strong search: combine text match + taxonomy name match and then apply base filters.
 if ( '' !== $q ) {
 	$matched_city_slugs = [];
@@ -1111,12 +1140,24 @@ get_header();
 
 	function syncSidebarCheckboxesFromTopSelects() {
 		const cv = citySelect?.value?.trim() || '';
-		document.querySelectorAll('#archive-filters-panel input[name="city_term[]"]').forEach((box) => {
-			box.checked = cv !== '' && box.value === cv;
-		});
+		if (cv !== '') {
+			document.querySelectorAll('#archive-filters-panel input[name="city_term[]"]').forEach((box) => {
+				box.checked = box.value === cv;
+			});
+		}
 		const pv = provinceSelect?.value?.trim() || '';
-		document.querySelectorAll('#archive-filters-panel input[name="province_term[]"]').forEach((box) => {
-			box.checked = pv !== '' && box.value === pv;
+		if (pv !== '') {
+			document.querySelectorAll('#archive-filters-panel input[name="province_term[]"]').forEach((box) => {
+				box.checked = box.value === pv;
+			});
+		}
+	}
+
+	function setSidebarChecksBySlugs(inputName, slugs) {
+		const wanted = new Set((Array.isArray(slugs) ? slugs : []).filter(Boolean));
+		if (!wanted.size) return;
+		document.querySelectorAll(`#archive-filters-panel input[name="${inputName}"]`).forEach((box) => {
+			box.checked = wanted.has(box.value);
 		});
 	}
 
@@ -1183,7 +1224,7 @@ get_header();
 	}
 	.archive-search-card .archive-search-grid {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.1fr) minmax(0, 1.15fr) auto;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 10px;
 		align-items: center;
 	}
@@ -1223,11 +1264,15 @@ get_header();
 		box-sizing: border-box;
 		display: block;
 		text-align: right;
+		min-width: 0;
 	}
 	.archive-search-card .archive-field select {
 		appearance: none;
 		-webkit-appearance: none;
 		-moz-appearance: none;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.archive-search-card .archive-field input:focus,
 	.archive-search-card .archive-field select:focus {
@@ -1248,6 +1293,8 @@ get_header();
 		gap: 6px;
 		cursor: pointer;
 		transition: background-color 0.2s ease;
+		grid-column: 1 / -1;
+		justify-self: start;
 	}
 	.archive-search-card .archive-search-btn:hover {
 		background: #e9c659;
@@ -1257,6 +1304,12 @@ get_header();
 		text-align: left;
 		color: #6b7280;
 		font-size: 14px;
+	}
+	/* Prevent compressed archive header filters on medium/large screens */
+	@media (max-width: 1180px) {
+		.archive-search-card .archive-search-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 	@media (max-width: 900px) {
 		.archive-search-card .archive-search-grid {
