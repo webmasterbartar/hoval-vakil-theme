@@ -304,7 +304,7 @@ function hovalvakil_ajax_lawyers_csv_sync_chunk() {
 		);
 	}
 
-	$limit = isset( $_POST['limit'] ) ? max( 1, min( 120, absint( $_POST['limit'] ) ) ) : 50;
+	$limit = isset( $_POST['limit'] ) ? max( 1, min( 1000, absint( $_POST['limit'] ) ) ) : 1000;
 	$reset = ! empty( $_POST['reset'] );
 
 	if ( $reset ) {
@@ -492,7 +492,7 @@ function hovalvakil_render_lawyer_csv_sync_page() {
 			<table class="form-table" style="max-width:36rem;">
 				<tr>
 					<th><label for="hvl-csv-limit"><?php echo esc_html__( 'ردیف در هر درخواست', 'hello-elementor' ); ?></label></th>
-					<td><input type="number" id="hvl-csv-limit" min="1" max="120" value="50" /></td>
+					<td><input type="number" id="hvl-csv-limit" min="1" max="1000" value="1000" /></td>
 				</tr>
 			</table>
 			<p>
@@ -529,7 +529,7 @@ function hovalvakil_render_lawyer_csv_sync_page() {
 			const fd = new FormData();
 			fd.append('action', 'hovalvakil_lawyers_csv_sync_chunk');
 			fd.append('nonce', nonce);
-			fd.append('limit', String(Math.max(1, Math.min(120, Number(limitEl?.value || 50)))));
+			fd.append('limit', String(Math.max(1, Math.min(1000, Number(limitEl?.value || 1000)))));
 			if (reset) fd.append('reset', '1');
 			const res = await fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd });
 			const js = await res.json();
