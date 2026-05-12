@@ -97,6 +97,17 @@ function hovalvakil_lawyer_full_export_array( $post_id ) {
 		}
 	}
 
+	$meta_canonical = [];
+	if ( function_exists( 'hovalvakil_lawyer_meta_key_list' ) ) {
+		foreach ( hovalvakil_lawyer_meta_key_list() as $ckey ) {
+			if ( array_key_exists( $ckey, $meta ) ) {
+				$meta_canonical[ $ckey ] = $meta[ $ckey ];
+			} else {
+				$meta_canonical[ $ckey ] = null;
+			}
+		}
+	}
+
 	$taxonomies = get_object_taxonomies( 'hvl_lawyer', 'names' );
 	$terms_out  = [];
 	foreach ( $taxonomies as $tax ) {
@@ -107,16 +118,18 @@ function hovalvakil_lawyer_full_export_array( $post_id ) {
 		}
 		$terms_out[ $tax ] = array_map(
 			static function ( WP_Term $t ) {
+				$slug = (string) $t->slug;
 				return [
-					'term_id'     => (int) $t->term_id,
-					'name'        => (string) $t->name,
-					'slug'        => (string) $t->slug,
-					'term_group'  => (int) $t->term_group,
+					'term_id'          => (int) $t->term_id,
+					'name'             => (string) $t->name,
+					'slug'             => $slug,
+					'slug_decoded'     => rawurldecode( $slug ),
+					'term_group'       => (int) $t->term_group,
 					'term_taxonomy_id' => (int) $t->term_taxonomy_id,
-					'taxonomy'    => (string) $t->taxonomy,
-					'description' => (string) $t->description,
-					'parent'      => (int) $t->parent,
-					'count'       => (int) $t->count,
+					'taxonomy'         => (string) $t->taxonomy,
+					'description'      => (string) $t->description,
+					'parent'           => (int) $t->parent,
+					'count'            => (int) $t->count,
 				];
 			},
 			$terms
@@ -134,13 +147,14 @@ function hovalvakil_lawyer_full_export_array( $post_id ) {
 	}
 
 	return [
-		'exported_at'      => gmdate( 'c' ),
-		'post'             => $post_row,
-		'permalink'        => get_permalink( $post_id ),
-		'edit_link'        => get_edit_post_link( $post_id, 'raw' ),
-		'featured_image'   => $feat,
-		'meta'             => $meta,
-		'taxonomies'       => $terms_out,
+		'exported_at'       => gmdate( 'c' ),
+		'post'              => $post_row,
+		'permalink'         => get_permalink( $post_id ),
+		'edit_link'         => get_edit_post_link( $post_id, 'raw' ),
+		'featured_image'    => $feat,
+		'meta'           => $meta,
+		'meta_canonical' => $meta_canonical,
+		'taxonomies'     => $terms_out,
 	];
 }
 
@@ -183,6 +197,7 @@ function hovalvakil_render_lawyer_json_page() {
 		}
 		echo '</p>';
 		echo '<p><strong>' . esc_html__( 'شناسه:', 'hello-elementor' ) . '</strong> ' . esc_html( (string) $lawyer_id ) . ' — <strong>' . esc_html__( 'عنوان:', 'hello-elementor' ) . '</strong> ' . esc_html( (string) ( $data['post']['post_title'] ?? '' ) ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'بخش meta همهٔ ردیف‌های wp_postmeta این پست است. meta_canonical همان فیلدهای استاندارد تم است؛ مقدار null یعنی آن متا در دیتابیس ذخیره نشده (مثلاً تاریخ پروانه اگر در ایمپورت نبوده).', 'hello-elementor' ) . '</p>';
 		echo '<p><label><strong>' . esc_html__( 'خروجی JSON', 'hello-elementor' ) . '</strong></label></p>';
 		echo '<textarea readonly="readonly" id="hovalvakil-lawyer-json-out" class="large-text code" rows="28" style="width:100%;max-width:100%;font-family:Consolas,monospace;direction:ltr;text-align:left;">';
 		echo esc_textarea( $json );

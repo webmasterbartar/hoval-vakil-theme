@@ -225,6 +225,7 @@ require get_template_directory() . '/includes/hovalvakil-pages.php';
 require get_template_directory() . '/includes/hovalvakil-cpt.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-fieldmap.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-query.php';
+require get_template_directory() . '/includes/hovalvakil-media-control.php';
 require get_template_directory() . '/includes/hovalvakil-api.php';
 require get_template_directory() . '/includes/hovalvakil-importer.php';
 require get_template_directory() . '/includes/hovalvakil-media-control.php';
@@ -234,6 +235,7 @@ require get_template_directory() . '/includes/hovalvakil-lawyer-photo-sync.php';
 require get_template_directory() . '/includes/hovalvakil-admin-reservations.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-meta.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-json-settings.php';
+require get_template_directory() . '/includes/hovalvakil-admin-lawyer-featured-purge.php';
 
 if ( ! function_exists( 'hello_elementor_customizer' ) ) {
 	// Customizer controls
