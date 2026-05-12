@@ -58,8 +58,10 @@ function hovalvakil_maybe_delete_unused_featured_attachment( $attachment_id ) {
 		return false;
 	}
 
-	$del = wp_delete_attachment( $attachment_id, true );
-	return (bool) $del;
+	if ( function_exists( 'hovalvakil_delete_image_attachment_fully' ) ) {
+		return hovalvakil_delete_image_attachment_fully( $attachment_id );
+	}
+	return (bool) wp_delete_attachment( $attachment_id, true );
 }
 
 /**

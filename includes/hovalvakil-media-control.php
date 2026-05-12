@@ -60,6 +60,28 @@ function hovalvakil_register_media_cleanup_tools_page() {
 add_action( 'admin_menu', 'hovalvakil_register_media_cleanup_tools_page' );
 
 /**
+ * حذف کامل یک پیوست تصویر: فایل اصلی، همهٔ سایزها، ردیف attachment و تمام postmeta (مثل wp_delete_attachment).
+ *
+ * @param int $attachment_id Attachment ID.
+ * @return bool True if attachment existed and was deleted.
+ */
+function hovalvakil_delete_image_attachment_fully( $attachment_id ) {
+	$attachment_id = (int) $attachment_id;
+	if ( $attachment_id <= 0 ) {
+		return false;
+	}
+	$post = get_post( $attachment_id );
+	if ( ! $post instanceof WP_Post || 'attachment' !== $post->post_type ) {
+		return false;
+	}
+	if ( 0 !== strpos( (string) $post->post_mime_type, 'image/' ) ) {
+		return false;
+	}
+	$deleted = wp_delete_attachment( $attachment_id, true );
+	return (bool) $deleted;
+}
+
+/**
  * Delete registered sub-size files for one attachment.
  *
  * @param int $attachment_id Attachment ID.
@@ -132,8 +154,61 @@ function hovalvakil_ajax_media_cleanup_chunk() {
 		wp_send_json_error( [ 'message' => 'forbidden' ], 403 );
 	}
 
+	$limit = isset( $_POST['limit'] ) ? max( 1, min( 500, absint( $_POST['limit'] ) ) ) : 100;
+	$mode  = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : 'delete_attachment_full';
+
+	if ( 'delete_attachment_full' === $mode ) {
+		$q = new WP_Query(
+			[
+				'post_type'              => 'attachment',
+				'post_status'            => 'inherit',
+				'post_mime_type'         => 'image',
+				'posts_per_page'         => $limit,
+				'offset'                 => 0,
+				'fields'                 => 'ids',
+				'orderby'                => 'ID',
+				'order'                  => 'ASC',
+				'no_found_rows'          => false,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			]
+		);
+
+		$total_snapshot      = (int) $q->found_posts;
+		$processed           = 0;
+		$attachments_deleted = 0;
+		$attachments_failed  = 0;
+		foreach ( (array) $q->posts as $attachment_id ) {
+			$attachment_id = (int) $attachment_id;
+			if ( $attachment_id <= 0 ) {
+				continue;
+			}
+			$processed++;
+			if ( hovalvakil_delete_image_attachment_fully( $attachment_id ) ) {
+				$attachments_deleted++;
+			} else {
+				$attachments_failed++;
+			}
+		}
+
+		$remaining_estimate = max( 0, $total_snapshot - $attachments_deleted );
+		$done               = $processed <= 0;
+
+		wp_send_json_success(
+			[
+				'mode'                 => $mode,
+				'processed'            => $processed,
+				'attachments_deleted'  => $attachments_deleted,
+				'failed'               => $attachments_failed,
+				'remaining_estimate'   => $remaining_estimate,
+				'done'                 => $done,
+			]
+		);
+		return;
+	}
+
+	// حالت قدیمی: فقط فایل‌های سایز فرعی از دیسک (ردیف attachment می‌ماند).
 	$offset = isset( $_POST['offset'] ) ? max( 0, absint( $_POST['offset'] ) ) : 0;
-	$limit  = isset( $_POST['limit'] ) ? max( 1, min( 500, absint( $_POST['limit'] ) ) ) : 100;
 
 	$q = new WP_Query(
 		[
@@ -165,12 +240,15 @@ function hovalvakil_ajax_media_cleanup_chunk() {
 
 	wp_send_json_success(
 		[
-			'processed'    => $processed,
-			'deleted'      => $deleted,
-			'failed'       => $failed,
-			'next_offset'  => $next_offset,
-			'total'        => $total,
-			'done'         => $done,
+			'mode'                => 'strip_subsizes',
+			'processed'           => $processed,
+			'deleted'             => $deleted,
+			'failed'              => $failed,
+			'attachments_deleted' => 0,
+			'next_offset'         => $next_offset,
+			'total'               => $total,
+			'remaining_estimate'  => max( 0, $total - $next_offset ),
+			'done'                => $done,
 		]
 	);
 }
@@ -186,26 +264,43 @@ function hovalvakil_render_media_cleanup_tools_page() {
 		return;
 	}
 	?>
-	<div class="wrap">
+	<div class="wrap" dir="rtl" style="direction:rtl;text-align:right;">
 		<h1>Hovalvakil Media Cleanup</h1>
 		<p>
-			تولید سایزهای اضافی تصاویر غیرفعال شده است. این ابزار فقط فایل‌های sub-size ثبت‌شده در metadata را حذف می‌کند و فایل اصلی را نگه می‌دارد.
+			تولید سایزهای اضافی برای تصاویر جدید در تم غیرفعال است. نوع عملیات را انتخاب کنید.
 		</p>
+		<fieldset style="margin:1rem 0;padding:12px;border:1px solid #c3c4c7;border-radius:4px;max-width:62rem;">
+			<legend style="font-weight:600;padding:0 6px;"><?php echo esc_html__( 'نوع پاکسازی', 'hello-elementor' ); ?></legend>
+			<label style="display:block;margin:.5rem 0;">
+				<input type="radio" name="hvl-media-mode" value="delete_attachment_full" checked="checked" />
+				<strong><?php echo esc_html__( 'حذف کامل هر پیوست تصویر (پیش‌فرض)', 'hello-elementor' ); ?></strong>
+				— <?php echo esc_html__( 'فایل اصلی، همهٔ سایزها، ردیف attachment و تمام postmeta از دیتابیس حذف می‌شود (مثل wp_delete_attachment با force).', 'hello-elementor' ); ?>
+			</label>
+			<label style="display:block;margin:.5rem 0;">
+				<input type="radio" name="hvl-media-mode" value="strip_subsizes" />
+				<?php echo esc_html__( 'فقط حذف فایل‌های سایز فرعی از دیسک؛ رکورد رسانه و فایل اصلی می‌ماند (قدیمی).', 'hello-elementor' ); ?>
+			</label>
+		</fieldset>
+		<div class="notice notice-error inline" style="max-width:62rem;">
+			<p>
+				<?php echo esc_html__( 'حالت «حذف کامل» تمام تصاویر رسانه را به‌ترتیب از بین می‌برد. اگر همان فایل در نوشته‌ها به‌صورت بلوک تصویر یا شاخص استفاده شده، لینک‌ها می‌شکنند. فقط در صورت اطمینان اجرا کنید.', 'hello-elementor' ); ?>
+			</p>
+		</div>
 		<table class="form-table" style="max-width:62rem;">
 			<tbody>
 				<tr>
 					<th scope="row"><label for="hvl-media-limit">تعداد در هر مرحله</label></th>
 					<td><input id="hvl-media-limit" type="number" min="1" max="500" value="100" /></td>
 				</tr>
-				<tr>
+				<tr class="hvl-media-offset-row">
 					<th scope="row"><label for="hvl-media-offset">offset شروع</label></th>
 					<td><input id="hvl-media-offset" type="number" min="0" value="0" /></td>
 				</tr>
 			</tbody>
 		</table>
 		<p>
-			<button type="button" class="button button-primary" id="hvl-media-run">شروع پاکسازی</button>
-			<button type="button" class="button" id="hvl-media-stop" disabled style="margin-inline-start:8px;">توقف</button>
+			<button type="button" class="button button-primary" id="hvl-media-run"><?php echo esc_html__( 'شروع پاکسازی', 'hello-elementor' ); ?></button>
+			<button type="button" class="button" id="hvl-media-stop" disabled style="margin-inline-start:8px;"><?php echo esc_html__( 'توقف', 'hello-elementor' ); ?></button>
 		</p>
 		<p id="hvl-media-status" style="font-weight:700;" aria-live="polite"></p>
 		<pre id="hvl-media-log" style="max-width:62rem;max-height:300px;overflow:auto;background:#f6f7f7;border:1px solid #c3c4c7;padding:10px;direction:ltr;text-align:left;"></pre>
@@ -220,7 +315,22 @@ function hovalvakil_render_media_cleanup_tools_page() {
 			const logEl = document.getElementById('hvl-media-log');
 			const limitEl = document.getElementById('hvl-media-limit');
 			const offsetEl = document.getElementById('hvl-media-offset');
+			const offsetRow = document.querySelector('.hvl-media-offset-row');
 			let stopped = false;
+
+			function getMode() {
+				const r = document.querySelector('input[name="hvl-media-mode"]:checked');
+				return r ? r.value : 'delete_attachment_full';
+			}
+
+			function syncOffsetRow() {
+				const m = getMode();
+				if (offsetRow) offsetRow.style.display = (m === 'strip_subsizes') ? '' : 'none';
+			}
+			document.querySelectorAll('input[name="hvl-media-mode"]').forEach((el) => {
+				el.addEventListener('change', syncOffsetRow);
+			});
+			syncOffsetRow();
 
 			function logLine(obj) {
 				if (!logEl) return;
@@ -228,12 +338,15 @@ function hovalvakil_render_media_cleanup_tools_page() {
 				logEl.scrollTop = logEl.scrollHeight;
 			}
 
-			async function runChunk(offset, limit) {
+			async function runChunk(limit, mode, offset) {
 				const fd = new FormData();
 				fd.append('action', 'hovalvakil_media_cleanup_chunk');
 				fd.append('nonce', nonce);
-				fd.append('offset', String(offset));
 				fd.append('limit', String(limit));
+				fd.append('mode', mode);
+				if (mode === 'strip_subsizes') {
+					fd.append('offset', String(offset));
+				}
 				const res = await fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd });
 				const js = await res.json();
 				if (!js || !js.success) throw new Error((js && js.data && js.data.message) ? js.data.message : ('http_' + res.status));
@@ -241,35 +354,53 @@ function hovalvakil_render_media_cleanup_tools_page() {
 			}
 
 			runBtn?.addEventListener('click', async () => {
-				let offset = Math.max(0, Number(offsetEl?.value || 0));
 				const limit = Math.max(1, Math.min(500, Number(limitEl?.value || 100)));
+				const mode = getMode();
+				let offset = Math.max(0, Number(offsetEl?.value || 0));
 				let totalProcessed = 0;
-				let totalDeleted = 0;
+				let totalAttachmentsDeleted = 0;
+				let totalFileDeleted = 0;
 				let totalFailed = 0;
 				let step = 0;
 				stopped = false;
 				runBtn.disabled = true;
 				stopBtn.disabled = false;
 				if (logEl) logEl.textContent = '';
-				if (statusEl) statusEl.textContent = 'در حال اجرا...';
+				if (statusEl) statusEl.textContent = '<?php echo esc_js( __( 'در حال اجرا…', 'hello-elementor' ) ); ?>';
 				try {
 					while (!stopped) {
 						step += 1;
-						const d = await runChunk(offset, limit);
+						const d = await runChunk(limit, mode, offset);
 						totalProcessed += Number(d.processed || 0);
-						totalDeleted += Number(d.deleted || 0);
-						totalFailed += Number(d.failed || 0);
-						offset = Number(d.next_offset || offset);
-						if (offsetEl) offsetEl.value = String(offset);
-						logLine({ step, processed: d.processed, deleted: d.deleted, failed: d.failed, next_offset: offset, total: d.total, done: !!d.done });
-						if (statusEl) statusEl.textContent = `مرحله ${step} | پردازش ${totalProcessed} | حذف ${totalDeleted} | خطا ${totalFailed}`;
+						if (mode === 'delete_attachment_full') {
+							totalAttachmentsDeleted += Number(d.attachments_deleted || 0);
+							totalFailed += Number(d.failed || 0);
+						} else {
+							totalFileDeleted += Number(d.deleted || 0);
+							totalFailed += Number(d.failed || 0);
+							offset = Number(d.next_offset != null ? d.next_offset : offset);
+							if (offsetEl) offsetEl.value = String(offset);
+						}
+						logLine({ step, ...d });
+						if (statusEl) {
+							if (mode === 'delete_attachment_full') {
+								statusEl.textContent = '<?php echo esc_js( __( 'مرحله', 'hello-elementor' ) ); ?> ' + step
+									+ ' | <?php echo esc_js( __( 'پیوست حذف‌شده (تجمعی)', 'hello-elementor' ) ); ?> ' + totalAttachmentsDeleted
+									+ ' | <?php echo esc_js( __( 'ناموفق', 'hello-elementor' ) ); ?> ' + totalFailed
+									+ ' | <?php echo esc_js( __( 'تخمین باقی‌مانده', 'hello-elementor' ) ); ?> ' + (d.remaining_estimate != null ? d.remaining_estimate : '—');
+							} else {
+								statusEl.textContent = '<?php echo esc_js( __( 'مرحله', 'hello-elementor' ) ); ?> ' + step
+									+ ' | <?php echo esc_js( __( 'فایل سایز فرعی حذف‌شده', 'hello-elementor' ) ); ?> ' + totalFileDeleted
+									+ ' | offset ' + offset;
+							}
+						}
 						if (d.done) break;
 						await new Promise((r) => setTimeout(r, 25));
 					}
-					if (statusEl) statusEl.textContent = stopped ? 'متوقف شد' : 'پاکسازی کامل شد';
+					if (statusEl) statusEl.textContent = stopped ? '<?php echo esc_js( __( 'متوقف شد', 'hello-elementor' ) ); ?>' : '<?php echo esc_js( __( 'پایان عملیات.', 'hello-elementor' ) ); ?>';
 				} catch (e) {
 					logLine('error: ' + String(e && e.message ? e.message : e));
-					if (statusEl) statusEl.textContent = 'خطا در اجرا';
+					if (statusEl) statusEl.textContent = '<?php echo esc_js( __( 'خطا در اجرا', 'hello-elementor' ) ); ?>';
 				} finally {
 					runBtn.disabled = false;
 					stopBtn.disabled = true;
