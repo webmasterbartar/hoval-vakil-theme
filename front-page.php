@@ -233,16 +233,18 @@ if ( empty( $home_cities_by_province ) && empty( $home_city_fallback_rows ) ) {
 		}
 	);
 }
-$initial_query = new WP_Query(
+$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = true;
+$initial_query                                       = new WP_Query(
 	[
 		'post_type'              => 'hvl_lawyer',
 		'post_status'            => 'publish',
-		'posts_per_page'         => 16,
+		'posts_per_page'         => 20,
 		'no_found_rows'          => false,
 		'update_post_meta_cache' => true,
 		'update_post_term_cache' => true,
 	]
 );
+unset( $GLOBALS['hovalvakil_lawyer_query_order_image_first'] );
 $initial_total_pages = max( 1, (int) $initial_query->max_num_pages );
 get_header();
 ?>
@@ -466,7 +468,7 @@ get_header();
 		const gradeFilterWrap = document.getElementById('home-grade-filters');
 		const liveResultsEl = document.getElementById('home-live-results');
 
-		const GRID_PER_PAGE = 16;
+		const GRID_PER_PAGE = 20;
 		let currentPage = 1;
 		let totalPages = initialTotalPages;
 		let selectedGrade = '';

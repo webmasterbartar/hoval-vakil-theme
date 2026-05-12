@@ -687,6 +687,9 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		}
 
 		$matched_ids = array_values( array_unique( array_map( 'intval', array_merge( $text_ids, $tax_match_ids, $meta_match_ids ) ) ) );
+		if ( function_exists( 'hovalvakil_lawyer_sort_ids_image_first' ) ) {
+			$matched_ids = hovalvakil_lawyer_sort_ids_image_first( $matched_ids );
+		}
 
 		if ( empty( $matched_ids ) ) {
 			$args['post__in'] = [ 0 ];
@@ -696,7 +699,9 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		}
 	}
 
-	$query = new WP_Query( $args );
+	$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = ( '' === $q );
+	$query                                                 = new WP_Query( $args );
+	unset( $GLOBALS['hovalvakil_lawyer_query_order_image_first'] );
 	$items = [];
 
 	while ( $query->have_posts() ) {
@@ -738,6 +743,14 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			? hovalvakil_lawyer_card_license_line( $post_id )
 			: '';
 
+		$license_no_raw = trim( (string) get_post_meta( $post_id, 'hvl_license_no', true ) );
+		$license_no_disp = '';
+		if ( '' !== $license_no_raw ) {
+			$license_no_disp = function_exists( 'hovalvakil_lawyer_digits_to_fa' )
+				? hovalvakil_lawyer_digits_to_fa( $license_no_raw )
+				: $license_no_raw;
+		}
+
 		$items[] = [
 			'id'         => $post_id,
 			'name'       => get_the_title(),
@@ -749,6 +762,7 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			'province'   => $province_name,
 			'location_line' => $location_line,
 			'card_license_line' => $card_license_line,
+			'license_no' => $license_no_disp,
 			'lawyer_grade' => $lawyer_grade,
 			'license_issued' => $lic_issued_raw,
 			'license_issued_display' => $lic_issued_disp,
@@ -756,8 +770,6 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			'license_expires_display' => $lic_exp_disp,
 			'experience' => (string) get_post_meta( $post_id, 'hvl_experience', true ),
 			'price_from' => (string) get_post_meta( $post_id, 'hvl_price_from', true ),
-			'rating'     => (string) get_post_meta( $post_id, 'hvl_rating', true ),
-			'reviews'    => (string) get_post_meta( $post_id, 'hvl_reviews_count', true ),
 			'reservation_url' => add_query_arg(
 				[
 					'lawyer_id' => $post_id,

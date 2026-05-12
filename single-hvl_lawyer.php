@@ -180,7 +180,16 @@ $related_args = [
 	'update_post_meta_cache' => true,
 ];
 
-if ( is_array( $specialties ) && ! empty( $specialties ) ) {
+// وکلای مرتبط: اولویت با همان شهر(های) وکیل جاری؛ اگر شهری نبود، پشتیبان = همان تخصص.
+if ( is_array( $cities ) && ! empty( $cities ) ) {
+	$related_args['tax_query'] = [
+		[
+			'taxonomy' => 'hvl_city',
+			'field'    => 'term_id',
+			'terms'    => wp_list_pluck( $cities, 'term_id' ),
+		],
+	];
+} elseif ( is_array( $specialties ) && ! empty( $specialties ) ) {
 	$related_args['tax_query'] = [
 		[
 			'taxonomy' => 'hvl_specialty',
@@ -294,7 +303,7 @@ get_header();
 						<?php if ( '' !== $license ) : ?>
 						<div class="detail-item">
 							<span class="material-symbols-outlined">description</span>
-							<span><?php echo esc_html( $license ); ?></span>
+							<span><?php echo esc_html__( 'شماره پروانه: ', 'hello-elementor' ) . esc_html( $license ); ?></span>
 						</div>
 						<?php endif; ?>
 					</div>

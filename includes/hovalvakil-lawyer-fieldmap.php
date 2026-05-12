@@ -187,6 +187,79 @@ function hovalvakil_lawyer_profile_image_url( $post_id, $size = 'medium' ) {
 }
 
 /**
+ * Whether the lawyer post has a listing avatar (thumbnail or valid hvl_photo_url).
+ *
+ * Same rules as {@see hovalvakil_lawyer_profile_image_url()}.
+ *
+ * @param int $post_id Post ID.
+ * @return bool
+ */
+function hovalvakil_lawyer_post_has_listing_image( $post_id ) {
+	$url = hovalvakil_lawyer_profile_image_url( (int) $post_id, 'medium' );
+	return is_string( $url ) && '' !== $url;
+}
+
+/**
+ * Stable sort: lawyers with a listing image first, without last.
+ *
+ * @param int[] $ids Post IDs (any order).
+ * @return int[]
+ */
+function hovalvakil_lawyer_sort_ids_image_first( array $ids ) {
+	$with    = [];
+	$without = [];
+	foreach ( $ids as $id ) {
+		$id = (int) $id;
+		if ( $id <= 0 ) {
+			continue;
+		}
+		if ( hovalvakil_lawyer_post_has_listing_image( $id ) ) {
+			$with[] = $id;
+		} else {
+			$without[] = $id;
+		}
+	}
+	return array_merge( $with, $without );
+}
+
+/**
+ * ORDER BY: listing image first, then preserve WordPress order (date / meta). Uses EXISTS so extra
+ * JOINs are not added — JOINs on postmeta conflict with meta_query / tax_query and can break results.
+ *
+ * Activate via $GLOBALS['hovalvakil_lawyer_query_order_image_first'].
+ *
+ * @param string   $orderby ORDER BY clause fragment.
+ * @param WP_Query $query   Query object.
+ * @return string
+ */
+function hovalvakil_lawyer_posts_orderby_listing_image( $orderby, $query ) {
+	if ( empty( $GLOBALS['hovalvakil_lawyer_query_order_image_first'] ) ) {
+		return $orderby;
+	}
+	if ( ! $query instanceof WP_Query ) {
+		return $orderby;
+	}
+	$pt = $query->get( 'post_type' );
+	if ( 'hvl_lawyer' !== $pt && ( ! is_array( $pt ) || ! in_array( 'hvl_lawyer', $pt, true ) ) ) {
+		return $orderby;
+	}
+
+	global $wpdb;
+	$p = $wpdb->posts;
+	$m = $wpdb->postmeta;
+
+	$img_sort = "(CASE WHEN EXISTS(SELECT 1 FROM {$m} pm_t WHERE pm_t.post_id = {$p}.ID AND pm_t.meta_key = '_thumbnail_id' AND pm_t.meta_value IS NOT NULL AND pm_t.meta_value != '' AND pm_t.meta_value != '0') OR EXISTS(SELECT 1 FROM {$m} pm_u WHERE pm_u.post_id = {$p}.ID AND pm_u.meta_key = 'hvl_photo_url' AND TRIM(IFNULL(pm_u.meta_value,'')) != '') THEN 0 ELSE 1 END) ASC";
+
+	$orderby = trim( (string) $orderby );
+	if ( '' === $orderby ) {
+		return $img_sort . ", {$p}.post_date DESC";
+	}
+
+	return $img_sort . ', ' . $orderby;
+}
+add_filter( 'posts_orderby', 'hovalvakil_lawyer_posts_orderby_listing_image', 10, 2 );
+
+/**
  * Theme-hosted placeholder when no profile image (avoids external placeholder CDNs).
  *
  * @return string Absolute URL (not HTML-escaped).

@@ -3185,6 +3185,30 @@ input, select {
     gap: 1rem;
 }
 
+/* Block link over main area → real URL + pointer cursor (footer CTAs remain separate links). */
+.archive-lawyer-main--linked {
+    position: relative;
+}
+
+.archive-lawyer-card-hit {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: 0.875rem;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.archive-lawyer-card-hit:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.archive-lawyer-main--linked > :not(.archive-lawyer-card-hit) {
+    position: relative;
+    z-index: 1;
+}
+
 .archive-lawyer-avatar {
     width: 4.5rem;
     height: 4.5rem;
@@ -3213,6 +3237,14 @@ input, select {
     align-items: center;
     gap: 0.3rem;
     margin-bottom: 0.4rem;
+}
+
+.archive-lawyer-grade {
+    margin: 0 0 0.35rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.35;
 }
 
 .archive-verified-icon {

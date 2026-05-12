@@ -358,7 +358,11 @@ function hovalvakil_lawyer_strong_search_all_ids( array $filtered_base, $q ) {
 		$tax_match_ids = hovalvakil_lawyer_collect_post_ids_batched( $tax_match_args );
 	}
 
-	return array_values( array_unique( array_merge( $text_ids, $tax_match_ids ) ) );
+	$merged = array_values( array_unique( array_merge( $text_ids, $tax_match_ids ) ) );
+	if ( function_exists( 'hovalvakil_lawyer_sort_ids_image_first' ) ) {
+		return hovalvakil_lawyer_sort_ids_image_first( $merged );
+	}
+	return $merged;
 }
 
 /**
@@ -418,7 +422,10 @@ function hovalvakil_lawyer_get_list_wp_query( array $params ) {
 	$base = hovalvakil_lawyer_base_list_args( $base_extra );
 
 	if ( '' === $q ) {
-		return new WP_Query( $base );
+		$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = true;
+		$qobj                                                = new WP_Query( $base );
+		unset( $GLOBALS['hovalvakil_lawyer_query_order_image_first'] );
+		return $qobj;
 	}
 
 	// Strong search: full ID set under filters, then slice page (keeps post__in small).

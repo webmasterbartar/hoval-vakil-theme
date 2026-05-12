@@ -70,7 +70,7 @@ function hovalvakil_rewrite_static_html_links( $html ) {
 	$replacements = [
 		'style.css'     => $asset_base . 'style.css',
 		'index.html'    => home_url( '/' ),
-		'arshive.html'  => trailingslashit( home_url( '/arshive' ) ),
+		'arshive.html'  => trailingslashit( home_url( '/archive' ) ),
 		'profil.html'   => trailingslashit( home_url( '/profil' ) ),
 		'rezerv.html'   => trailingslashit( home_url( '/rezerv' ) ),
 		'marakez.html'  => trailingslashit( home_url( '/marakez' ) ),

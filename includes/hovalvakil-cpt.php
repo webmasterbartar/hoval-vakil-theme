@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return void
  */
 function hovalvakil_maybe_flush_rewrite_rules() {
-	$current = '2026-05-03-hvl-province-tax';
+	$current = '2026-05-09-hvl-lawyer-archive-slug';
 	$saved   = get_option( 'hovalvakil_rewrite_version' );
 
 	if ( $saved === $current ) {
@@ -71,7 +71,7 @@ function hovalvakil_register_content_types() {
 			'show_in_rest' => true,
 			'menu_icon'    => $menu_icon,
 			'supports'     => $common_supports,
-			'has_archive'  => 'arshive',
+			'has_archive'  => 'archive',
 			'rewrite'      => [ 'slug' => 'vakil' ],
 		]
 	);

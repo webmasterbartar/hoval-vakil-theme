@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $contact_phone   = (string) get_theme_mod( 'hvl_footer_phone', '۰۲۱۲۲۰۰۰۷۵۲' );
-$contact_email   = (string) get_theme_mod( 'hvl_footer_email', 'info@holokeil.ir' );
+$contact_email   = (string) get_theme_mod( 'hvl_footer_email', 'info@hovalvakil.ir' );
 $contact_address = (string) get_theme_mod( 'hvl_footer_address', 'تهران -بلوار کاوه نرسیده به چهارراه دولت پ ۱۲' );
 
 get_header();

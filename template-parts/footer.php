@@ -9,9 +9,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $footer_phone     = get_theme_mod( 'hvl_footer_phone', '۰۲۱۲۲۰۰۰۷۵۲' );
-$footer_email     = get_theme_mod( 'hvl_footer_email', 'info@holokeil.ir' );
+$footer_email     = get_theme_mod( 'hvl_footer_email', 'info@hovalvakil.ir' );
 $footer_address   = get_theme_mod( 'hvl_footer_address', 'تهران -بلوار کاوه نرسیده به چهارراه دولت پ ۱۲' );
 $footer_copy      = get_theme_mod( 'hvl_footer_copyright', '© ۱۴۰۲ تمامی حقوق برای هوالوکیل محفوظ است.' );
+$footer_phone_ascii = strtr(
+	(string) $footer_phone,
+	[
+		'۰' => '0',
+		'۱' => '1',
+		'۲' => '2',
+		'۳' => '3',
+		'۴' => '4',
+		'۵' => '5',
+		'۶' => '6',
+		'۷' => '7',
+		'۸' => '8',
+		'۹' => '9',
+	]
+);
+$footer_phone_dial = preg_replace( '/\D+/', '', $footer_phone_ascii );
+if ( ! is_string( $footer_phone_dial ) || '' === $footer_phone_dial ) {
+	$footer_phone_dial = '02122000752';
+}
 ?>
 <footer id="site-footer" class="site-footer hvl-footer">
 	<div class="container">
@@ -52,7 +71,7 @@ $footer_copy      = get_theme_mod( 'hvl_footer_copyright', '© ۱۴۰۲ تمام
 				<div class="hvl-footer-contact">
 					<div class="hvl-footer-contact-row">
 						<span class="material-symbols-outlined">phone</span>
-						<span><?php echo esc_html( $footer_phone ); ?></span>
+						<a dir="ltr" href="<?php echo esc_url( 'tel:' . (string) $footer_phone_dial ); ?>"><?php echo esc_html( $footer_phone ); ?></a>
 					</div>
 					<div class="hvl-footer-contact-row">
 						<span class="material-symbols-outlined">mail</span>

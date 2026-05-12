@@ -49,7 +49,7 @@ function hello_customizer_register( $wp_customize ) {
 
 	$hvl_text_fields = [
 		'hvl_footer_phone'      => [ 'label' => 'شماره تماس', 'default' => '۰۲۱۲۲۰۰۰۷۵۲' ],
-		'hvl_footer_email'      => [ 'label' => 'ایمیل', 'default' => 'info@holokeil.ir' ],
+		'hvl_footer_email'      => [ 'label' => 'ایمیل', 'default' => 'info@hovalvakil.ir' ],
 		'hvl_footer_address'    => [ 'label' => 'آدرس', 'default' => 'تهران -بلوار کاوه نرسیده به چهارراه دولت پ ۱۲' ],
 		'hvl_footer_copyright'  => [ 'label' => 'متن کپی‌رایت', 'default' => '© ۱۴۰۲ تمامی حقوق برای هوالوکیل محفوظ است.' ],
 	];
