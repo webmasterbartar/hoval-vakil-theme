@@ -236,6 +236,7 @@ require get_template_directory() . '/includes/hovalvakil-admin-reservations.php'
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-meta.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-json-settings.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-featured-purge.php';
+require get_template_directory() . '/includes/hovalvakil-lawyer-csv-sync.php';
 
 if ( ! function_exists( 'hello_elementor_customizer' ) ) {
 	// Customizer controls

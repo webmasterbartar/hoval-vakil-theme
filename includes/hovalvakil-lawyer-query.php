@@ -44,6 +44,9 @@ function hovalvakil_lawyer_query_register_cache_invalidation() {
 			if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
 				return;
 			}
+			if ( apply_filters( 'hovalvakil_skip_lawyer_cache_bump_on_save', false, (int) $post_id ) ) {
+				return;
+			}
 			hovalvakil_lawyer_bump_cache_version();
 		}
 	);
@@ -93,6 +96,9 @@ function hovalvakil_lawyer_query_register_cache_invalidation() {
 		'set_object_terms',
 		static function ( $object_id ) {
 			if ( ! $object_id ) {
+				return;
+			}
+			if ( apply_filters( 'hovalvakil_skip_lawyer_cache_bump_on_save', false, (int) $object_id ) ) {
 				return;
 			}
 			$pt = get_post_type( (int) $object_id );
