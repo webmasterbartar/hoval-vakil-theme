@@ -139,6 +139,40 @@ function hovalvakil_lawyer_grade_meta_query_for_slug( $slug ) {
 }
 
 /**
+ * meta_query برای چند slug مقطع (OR بین مقاطع).
+ *
+ * @param string[] $slugs هر مقدار: p1 | p2 | karamooz.
+ * @return array<string, mixed>|null
+ */
+function hovalvakil_lawyer_grade_meta_query_for_slugs( array $slugs ) {
+	$allowed = [ 'p1', 'p2', 'karamooz' ];
+	$clean   = [];
+	foreach ( $slugs as $s ) {
+		$s = sanitize_key( (string) $s );
+		if ( in_array( $s, $allowed, true ) && ! in_array( $s, $clean, true ) ) {
+			$clean[] = $s;
+		}
+	}
+	if ( empty( $clean ) ) {
+		return null;
+	}
+	if ( 1 === count( $clean ) ) {
+		return hovalvakil_lawyer_grade_meta_query_for_slug( $clean[0] );
+	}
+	$parts = [];
+	foreach ( $clean as $slug ) {
+		$m = hovalvakil_lawyer_grade_meta_query_for_slug( $slug );
+		if ( $m ) {
+			$parts[] = $m;
+		}
+	}
+	if ( empty( $parts ) ) {
+		return null;
+	}
+	return array_merge( [ 'relation' => 'OR' ], $parts );
+}
+
+/**
  * تعداد وکلای منتشرشده برای یک slug مقطع (p1 | p2 | karamooz).
  *
  * @param string $slug Slug.
@@ -504,7 +538,17 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 	$city_term = hovalvakil_rest_get_csv_query_param( $request, 'city_term' );
 	$province_term = hovalvakil_rest_get_csv_query_param( $request, 'province_term' );
 	$specialty = hovalvakil_rest_get_csv_query_param( $request, 'specialty' );
-	$grade_raw = sanitize_key( (string) $request->get_param( 'grade' ) );
+	$grade_csv = hovalvakil_rest_get_csv_query_param( $request, 'grade' );
+	$grade_slugs = [];
+	foreach ( array_map( 'trim', explode( ',', (string) $grade_csv ) ) as $part ) {
+		if ( '' === $part ) {
+			continue;
+		}
+		$sk = sanitize_key( $part );
+		if ( in_array( $sk, [ 'p1', 'p2', 'karamooz' ], true ) && ! in_array( $sk, $grade_slugs, true ) ) {
+			$grade_slugs[] = $sk;
+		}
+	}
 	$page      = max( 1, (int) $request->get_param( 'page' ) );
 	$per_page  = min( 48, max( 1, (int) $request->get_param( 'per_page' ) ) );
 
@@ -560,24 +604,20 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		$base_args['tax_query'] = $tax_query;
 	}
 
-	$grade_meta = hovalvakil_lawyer_grade_meta_query_for_slug( $grade_raw );
+	$grade_meta = function_exists( 'hovalvakil_lawyer_grade_meta_query_for_slugs' )
+		? hovalvakil_lawyer_grade_meta_query_for_slugs( $grade_slugs )
+		: null;
 	if ( $grade_meta ) {
 		$base_args['meta_query'] = $grade_meta;
 	}
 
 	$args = $base_args;
 
-	// Strong search for archive AJAX: match by lawyer name/content + city names + specialty names.
+	// Strong search: lawyer text + city/province name match + office address meta.
 	if ( '' !== $q ) {
 		$city_terms = get_terms(
 			[
 				'taxonomy'   => 'hvl_city',
-				'hide_empty' => false,
-			]
-		);
-		$specialty_terms = get_terms(
-			[
-				'taxonomy'   => 'hvl_specialty',
 				'hide_empty' => false,
 			]
 		);
@@ -594,15 +634,6 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			foreach ( $city_terms as $cterm ) {
 				if ( false !== mb_stripos( $cterm->name, $q ) ) {
 					$matched_city_slugs[] = $cterm->slug;
-				}
-			}
-		}
-
-		$matched_specialty_slugs = [];
-		if ( ! is_wp_error( $specialty_terms ) ) {
-			foreach ( $specialty_terms as $sterm ) {
-				if ( false !== mb_stripos( $sterm->name, $q ) ) {
-					$matched_specialty_slugs[] = $sterm->slug;
 				}
 			}
 		}
@@ -640,7 +671,7 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		$meta_match_ids = get_posts( $meta_match_args );
 
 		$tax_match_ids = [];
-		if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) || ! empty( $matched_province_slugs ) ) {
+		if ( ! empty( $matched_city_slugs ) || ! empty( $matched_province_slugs ) ) {
 			$tax_match_args = $base_args;
 			$tax_match_args['fields']         = 'ids';
 			$tax_match_args['posts_per_page'] = 300;
@@ -653,13 +684,6 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 					'taxonomy' => 'hvl_city',
 					'field'    => 'slug',
 					'terms'    => $matched_city_slugs,
-				];
-			}
-			if ( ! empty( $matched_specialty_slugs ) ) {
-				$q_tax[] = [
-					'taxonomy' => 'hvl_specialty',
-					'field'    => 'slug',
-					'terms'    => $matched_specialty_slugs,
 				];
 			}
 			if ( ! empty( $matched_province_slugs ) ) {

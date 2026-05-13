@@ -69,228 +69,52 @@ foreach ( $home_grade_cards as $g ) {
 		: 0;
 }
 
-$home_city_province_pairs = function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' )
-	? hovalvakil_home_city_province_pairs_for_lawyers()
-	: [];
-$home_cities_by_province  = [];
-foreach ( $home_city_province_pairs as $row ) {
-	$prov = $row['province'];
-	$city = $row['city'];
-	if ( ! $prov instanceof WP_Term || ! $city instanceof WP_Term ) {
-		continue;
-	}
-	$pid = (int) $prov->term_id;
-	if ( ! isset( $home_cities_by_province[ $pid ] ) ) {
-		$home_cities_by_province[ $pid ] = [
-			'province' => $prov,
-			'cities'   => [],
-		];
-	}
-	$home_cities_by_province[ $pid ]['cities'][] = [
-		'term'          => $city,
-		'lawyer_count'  => (int) ( $row['lawyer_count'] ?? 0 ),
-	];
-}
-uasort(
-	$home_cities_by_province,
-	static function ( $a, $b ) {
-		return strnatcasecmp( $a['province']->name, $b['province']->name );
-	}
-);
-foreach ( $home_cities_by_province as &$prov_block ) {
-	usort(
-		$prov_block['cities'],
-		static function ( $x, $y ) {
-			$cx = (int) ( $x['lawyer_count'] ?? 0 );
-			$cy = (int) ( $y['lawyer_count'] ?? 0 );
-			if ( $cx !== $cy ) {
-				return $cy <=> $cx;
-			}
-			return strnatcasecmp( $x['term']->name, $y['term']->name );
-		}
-	);
-}
-unset( $prov_block );
-
+/** فهرست استان‌ها با تعداد وکیل برای سکشن صفحهٔ اصلی (بدون زیرمجموعهٔ شهر). */
 $home_province_rows = [];
-foreach ( $home_cities_by_province as $prov_block ) {
-	$province_term = $prov_block['province'];
-	$cities_rows   = isset( $prov_block['cities'] ) && is_array( $prov_block['cities'] ) ? $prov_block['cities'] : [];
-	$province_count = 0;
-	foreach ( $cities_rows as $city_row ) {
-		$province_count += (int) ( $city_row['lawyer_count'] ?? 0 );
-	}
-	if ( $province_count <= 0 ) {
-		continue;
-	}
-	$home_province_rows[] = [
-		'term'         => $province_term,
-		'lawyer_count' => $province_count,
-	];
-}
-
-if ( empty( $home_province_rows ) ) {
-	$home_province_terms = get_terms(
-		[
-			'taxonomy'   => 'hvl_province',
-			'hide_empty' => false,
-			'orderby'    => 'name',
-			'order'      => 'ASC',
-		]
-	);
-	if ( ! is_wp_error( $home_province_terms ) && ! empty( $home_province_terms ) ) {
-		global $wpdb;
-		$province_counts = [];
-		$rows            = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS lawyer_count
-				FROM {$wpdb->posts} p
-				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = %s
-				WHERE p.post_type = %s AND p.post_status = %s
-				GROUP BY tt.term_id",
-				'hvl_province',
-				'hvl_lawyer',
-				'publish'
-			),
-			ARRAY_A
-		);
-		if ( is_array( $rows ) ) {
-			foreach ( $rows as $row ) {
-				$province_counts[ (int) $row['term_id'] ] = (int) $row['lawyer_count'];
-			}
-		}
-		foreach ( $home_province_terms as $province_term ) {
-			$count = (int) ( $province_counts[ (int) $province_term->term_id ] ?? 0 );
-			if ( $count <= 0 ) {
-				continue;
-			}
-			$home_province_rows[] = [
-				'term'         => $province_term,
-				'lawyer_count' => $count,
-			];
-		}
-	}
-}
-
-// Fallback: اگر جفت استان+شهر در داده‌ها کامل نبود، شهرها را مستقیم از taxonomy وکیل‌ها نمایش بده.
-$home_city_fallback_rows = [];
-if ( empty( $home_cities_by_province ) ) {
-	$home_city_terms = get_terms(
-		[
-			'taxonomy'   => 'hvl_city',
-			'hide_empty' => false,
-			'orderby'    => 'name',
-			'order'      => 'ASC',
-		]
-	);
-	if ( ! is_wp_error( $home_city_terms ) && ! empty( $home_city_terms ) ) {
-		global $wpdb;
-		$city_counts = [];
-		$rows        = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS lawyer_count
-				FROM {$wpdb->posts} p
-				INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
-				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = %s
-				WHERE p.post_type = %s AND p.post_status = %s
-				GROUP BY tt.term_id",
-				'hvl_city',
-				'hvl_lawyer',
-				'publish'
-			),
-			ARRAY_A
-		);
-		if ( is_array( $rows ) ) {
-			foreach ( $rows as $row ) {
-				$city_counts[ (int) $row['term_id'] ] = (int) $row['lawyer_count'];
-			}
-		}
-		foreach ( $home_city_terms as $city_term ) {
-			$count = (int) ( $city_counts[ (int) $city_term->term_id ] ?? 0 );
-			if ( $count <= 0 ) {
-				continue;
-			}
-			$home_city_fallback_rows[] = [
-				'term'         => $city_term,
-				'lawyer_count' => $count,
-			];
-		}
-		usort(
-			$home_city_fallback_rows,
-			static function ( $a, $b ) {
-				$ca = (int) ( $a['lawyer_count'] ?? 0 );
-				$cb = (int) ( $b['lawyer_count'] ?? 0 );
-				if ( $ca !== $cb ) {
-					return $cb <=> $ca;
-				}
-				return strnatcasecmp( $a['term']->name, $b['term']->name );
-			}
-		);
-	}
-}
-// Fallback سطح ۲: اگر taxonomy شهر هم خالی/بی‌استفاده بود، شهر را از آدرس/لوکیشن خود وکیل‌ها استخراج کن.
-if ( empty( $home_cities_by_province ) && empty( $home_city_fallback_rows ) ) {
-	$lawyer_ids = get_posts(
-		[
-			'post_type'      => 'hvl_lawyer',
-			'post_status'    => 'publish',
-			'posts_per_page' => 1200,
-			'fields'         => 'ids',
-			'no_found_rows'  => true,
-		]
-	);
-	$city_counts_by_name = [];
-	foreach ( $lawyer_ids as $lid ) {
-		$lid = (int) $lid;
-		if ( $lid <= 0 ) {
+global $wpdb;
+$home_prov_count_sql = $wpdb->get_results(
+	$wpdb->prepare(
+		"SELECT tt.term_id, COUNT(DISTINCT p.ID) AS lawyer_count
+		FROM {$wpdb->posts} p
+		INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+		INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = %s
+		WHERE p.post_type = %s AND p.post_status = %s
+		GROUP BY tt.term_id",
+		'hvl_province',
+		'hvl_lawyer',
+		'publish'
+	),
+	ARRAY_A
+);
+if ( is_array( $home_prov_count_sql ) ) {
+	foreach ( $home_prov_count_sql as $prow ) {
+		$tid = (int) ( $prow['term_id'] ?? 0 );
+		$cnt = (int) ( $prow['lawyer_count'] ?? 0 );
+		if ( $tid <= 0 || $cnt <= 0 ) {
 			continue;
 		}
-		$city_name = '';
-		$city_terms = get_the_terms( $lid, 'hvl_city' );
-		if ( is_array( $city_terms ) && ! empty( $city_terms ) ) {
-			$city_name = trim( (string) $city_terms[0]->name );
-		}
-		if ( '' === $city_name ) {
-			$raw_loc = function_exists( 'hovalvakil_lawyer_card_location_line' )
-				? (string) hovalvakil_lawyer_card_location_line( $lid )
-				: '';
-			if ( '' === trim( $raw_loc ) ) {
-				$raw_loc = (string) get_post_meta( $lid, 'hvl_office_address', true );
-			}
-			$raw_loc = trim( preg_replace( '/\s+/u', ' ', $raw_loc ) );
-			if ( '' !== $raw_loc ) {
-				$parts = preg_split( '/\s*[،,\-–—]\s*/u', $raw_loc );
-				if ( is_array( $parts ) && ! empty( $parts ) ) {
-					$city_name = trim( (string) $parts[0] );
-				}
-			}
-		}
-		if ( '' === $city_name ) {
+		$pt = get_term( $tid, 'hvl_province' );
+		if ( ! $pt instanceof WP_Term || is_wp_error( $pt ) ) {
 			continue;
 		}
-		if ( ! isset( $city_counts_by_name[ $city_name ] ) ) {
-			$city_counts_by_name[ $city_name ] = 0;
-		}
-		$city_counts_by_name[ $city_name ]++;
-	}
-	foreach ( $city_counts_by_name as $city_name => $count ) {
-		$home_city_fallback_rows[] = [
-			'term'           => null,
-			'city_name'      => (string) $city_name,
-			'lawyer_count'   => (int) $count,
-			'use_query_fallback' => true,
+		$home_province_rows[] = [
+			'term'          => $pt,
+			'lawyer_count'  => $cnt,
 		];
 	}
 	usort(
-		$home_city_fallback_rows,
+		$home_province_rows,
 		static function ( $a, $b ) {
 			$ca = (int) ( $a['lawyer_count'] ?? 0 );
 			$cb = (int) ( $b['lawyer_count'] ?? 0 );
 			if ( $ca !== $cb ) {
 				return $cb <=> $ca;
 			}
-			return strnatcasecmp( (string) ( $a['city_name'] ?? '' ), (string) ( $b['city_name'] ?? '' ) );
+			$ta = $a['term'] ?? null;
+			$tb = $b['term'] ?? null;
+			$na = $ta instanceof WP_Term ? $ta->name : '';
+			$nb = $tb instanceof WP_Term ? $tb->name : '';
+			return strnatcasecmp( (string) $na, (string) $nb );
 		}
 	);
 }
@@ -434,18 +258,21 @@ get_header();
 			</div>
 			<?php if ( ! empty( $home_province_rows ) ) : ?>
 				<div class="city-grid">
-					<?php foreach ( $home_province_rows as $province_row ) : ?>
+					<?php foreach ( $home_province_rows as $prov_row ) : ?>
 						<?php
-						$province_term = $province_row['term'];
-						$province_lawyers = (int) ( $province_row['lawyer_count'] ?? 0 );
-						$province_href = add_query_arg(
+						$province_term = $prov_row['term'];
+						$prov_lawyers  = (int) ( $prov_row['lawyer_count'] ?? 0 );
+						if ( ! $province_term instanceof WP_Term ) {
+							continue;
+						}
+						$prov_href = add_query_arg(
 							[
 								'province_term[]' => $province_term->slug,
 							],
 							$archive_url
 						);
 						?>
-						<a class="city-card" href="<?php echo esc_url( $province_href ); ?>">
+						<a class="city-card" href="<?php echo esc_url( $prov_href ); ?>">
 							<div class="city-card-header">
 								<div class="city-link-header">
 									<span class="material-symbols-outlined text-primary">map</span>
@@ -454,7 +281,7 @@ get_header();
 								<span class="material-symbols-outlined text-outline-variant text-lg">chevron_left</span>
 							</div>
 							<p class="text-xs text-on-surface-variant">
-								<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $province_lawyers ) ) ); ?> <?php esc_html_e( 'وکیل فعال', 'hello-elementor' ); ?>
+								<?php echo esc_html( hovalvakil_to_fa_digits( number_format_i18n( $prov_lawyers ) ) ); ?> <?php esc_html_e( 'وکیل فعال', 'hello-elementor' ); ?>
 							</p>
 						</a>
 					<?php endforeach; ?>
@@ -924,25 +751,6 @@ get_header();
 				padding-left: 0 !important;
 				padding-right: 0 !important;
 			}
-		}
-		.home-city-by-province {
-			display: flex;
-			flex-direction: column;
-			gap: 2rem;
-		}
-		.home-province-block {
-			text-align: right;
-		}
-		.home-province-title {
-			font-size: 1.125rem;
-			font-weight: 700;
-			color: #0f3d75;
-			margin: 0 0 0.75rem;
-			padding-bottom: 0.35rem;
-			border-bottom: 1px solid #e2e8f0;
-		}
-		.home-province-city-grid {
-			margin-top: 0.25rem;
 		}
 	</style>
 <?php get_footer(); ?>

@@ -36,7 +36,7 @@ function hovalvakil_get_param_array( $key ) {
 	if ( isset( $_GET[ $key ] ) ) {
 		$sources[] = $_GET[ $key ];
 	}
-	// Some URLs use literal key "specialty[]" / "city_term[]" instead of PHP's nested array.
+	// Some URLs use literal keys like "city_term[]" instead of PHP's nested array.
 	$bracket_key = $key . '[]';
 	if ( isset( $_GET[ $bracket_key ] ) ) {
 		$sources[] = $_GET[ $bracket_key ];
@@ -72,7 +72,15 @@ $q           = sanitize_text_field( hovalvakil_get_param( 'q' ) );
 $city        = sanitize_text_field( hovalvakil_get_param( 'city' ) );
 $city_terms_selected = hovalvakil_get_param_array( 'city_term' ); // city term slugs.
 $province_terms_selected = hovalvakil_get_param_array( 'province_term' ); // province term slugs.
-$grade_slug         = sanitize_key( hovalvakil_get_param( 'grade' ) );
+$grade_slugs             = [];
+foreach ( hovalvakil_get_param_array( 'grade' ) as $g_raw ) {
+	$g = sanitize_key( (string) $g_raw );
+	if ( in_array( $g, [ 'p1', 'p2', 'karamooz' ], true ) ) {
+		$grade_slugs[] = $g;
+	}
+}
+$grade_slugs         = array_values( array_unique( $grade_slugs ) );
+$grade_select_value  = 1 === count( $grade_slugs ) ? $grade_slugs[0] : '';
 
 $tax_query = [];
 
@@ -126,8 +134,8 @@ if ( ! empty( $tax_query ) ) {
 	$base_query_args['tax_query'] = $tax_query;
 }
 
-$grade_meta = function_exists( 'hovalvakil_lawyer_grade_meta_query_for_slug' )
-	? hovalvakil_lawyer_grade_meta_query_for_slug( $grade_slug )
+$grade_meta = function_exists( 'hovalvakil_lawyer_grade_meta_query_for_slugs' )
+	? hovalvakil_lawyer_grade_meta_query_for_slugs( $grade_slugs )
 	: null;
 if ( $grade_meta ) {
 	$base_query_args['meta_query'] = $grade_meta;
@@ -136,15 +144,6 @@ if ( $grade_meta ) {
 $city_terms = get_terms(
 	[
 		'taxonomy'   => 'hvl_city',
-		'hide_empty' => false,
-		'orderby'    => 'name',
-		'order'      => 'ASC',
-	]
-);
-
-$specialty_terms = get_terms(
-	[
-		'taxonomy'   => 'hvl_specialty',
 		'hide_empty' => false,
 		'orderby'    => 'name',
 		'order'      => 'ASC',
@@ -189,22 +188,13 @@ if ( ! empty( $province_terms_selected ) && ! is_wp_error( $city_terms ) && func
 	}
 }
 
-// Strong search: combine text match + taxonomy name match and then apply base filters.
+// Strong search: combine text match + city/province name match (no hvl_specialty branch).
 if ( '' !== $q ) {
 	$matched_city_slugs = [];
 	if ( ! is_wp_error( $city_terms ) ) {
 		foreach ( $city_terms as $cterm ) {
 			if ( false !== mb_stripos( $cterm->name, $q ) ) {
 				$matched_city_slugs[] = $cterm->slug;
-			}
-		}
-	}
-
-	$matched_specialty_slugs = [];
-	if ( ! is_wp_error( $specialty_terms ) ) {
-		foreach ( $specialty_terms as $sterm ) {
-			if ( false !== mb_stripos( $sterm->name, $q ) ) {
-				$matched_specialty_slugs[] = $sterm->slug;
 			}
 		}
 	}
@@ -243,7 +233,7 @@ if ( '' !== $q ) {
 	$meta_match_ids = get_posts( $meta_match_args );
 
 	$tax_match_ids = [];
-	if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) || ! empty( $matched_province_slugs ) ) {
+	if ( ! empty( $matched_city_slugs ) || ! empty( $matched_province_slugs ) ) {
 		$tax_match_query_args = $base_query_args;
 		$tax_match_query_args['fields']         = 'ids';
 		$tax_match_query_args['posts_per_page'] = 300;
@@ -256,13 +246,6 @@ if ( '' !== $q ) {
 				'taxonomy' => 'hvl_city',
 				'field'    => 'slug',
 				'terms'    => $matched_city_slugs,
-			];
-		}
-		if ( ! empty( $matched_specialty_slugs ) ) {
-			$q_tax[] = [
-				'taxonomy' => 'hvl_specialty',
-				'field'    => 'slug',
-				'terms'    => $matched_specialty_slugs,
 			];
 		}
 		if ( ! empty( $matched_province_slugs ) ) {
@@ -353,14 +336,14 @@ get_header();
 				<span class="material-symbols-outlined">badge</span>
 				<select name="grade" id="archive-grade-select">
 					<option value=""><?php esc_html_e( 'همهٔ مقاطع', 'hello-elementor' ); ?></option>
-					<option value="p1" <?php selected( $grade_slug, 'p1' ); ?>><?php esc_html_e( 'وکیل پایه یک', 'hello-elementor' ); ?></option>
-					<option value="p2" <?php selected( $grade_slug, 'p2' ); ?>><?php esc_html_e( 'وکیل پایه دو', 'hello-elementor' ); ?></option>
-					<option value="karamooz" <?php selected( $grade_slug, 'karamooz' ); ?>><?php esc_html_e( 'کارآموز وکالت', 'hello-elementor' ); ?></option>
+					<option value="p1" <?php selected( $grade_select_value, 'p1' ); ?>><?php esc_html_e( 'وکیل پایه یک', 'hello-elementor' ); ?></option>
+					<option value="p2" <?php selected( $grade_select_value, 'p2' ); ?>><?php esc_html_e( 'وکیل پایه دو', 'hello-elementor' ); ?></option>
+					<option value="karamooz" <?php selected( $grade_select_value, 'karamooz' ); ?>><?php esc_html_e( 'کارآموز وکالت', 'hello-elementor' ); ?></option>
 				</select>
 			</div>
 			<div class="archive-field">
 				<span class="material-symbols-outlined">person_search</span>
-				<input id="archive-q-input" type="text" name="q" placeholder="نام وکیل، تخصص یا شهر" value="<?php echo esc_attr( $q ); ?>"/>
+				<input id="archive-q-input" type="text" name="q" placeholder="نام وکیل یا شهر" value="<?php echo esc_attr( $q ); ?>"/>
 			</div>
 			<button class="archive-search-btn" type="submit">
 				<span class="material-symbols-outlined">search</span>
@@ -394,13 +377,21 @@ get_header();
 				$active_line_parts[] = 'استان: ' . implode( '، ', $prov_names );
 			}
 		}
-		if ( in_array( $grade_slug, [ 'p1', 'p2', 'karamooz' ], true ) ) {
+		if ( ! empty( $grade_slugs ) ) {
 			$grade_labels = [
 				'p1'       => __( 'وکیل پایه یک', 'hello-elementor' ),
 				'p2'       => __( 'وکیل پایه دو', 'hello-elementor' ),
 				'karamooz' => __( 'کارآموز وکالت', 'hello-elementor' ),
 			];
-			$active_line_parts[] = __( 'پایه:', 'hello-elementor' ) . ' ' . ( $grade_labels[ $grade_slug ] ?? $grade_slug );
+			$grade_names = [];
+			foreach ( $grade_slugs as $gs ) {
+				if ( isset( $grade_labels[ $gs ] ) ) {
+					$grade_names[] = $grade_labels[ $gs ];
+				}
+			}
+			if ( ! empty( $grade_names ) ) {
+				$active_line_parts[] = __( 'پایه:', 'hello-elementor' ) . ' ' . implode( '، ', $grade_names );
+			}
 		}
 		$active_line_visible = ! empty( $active_line_parts );
 		?>
@@ -431,24 +422,16 @@ get_header();
 					<div id="archive-grade-group" class="archive-filter-group-content archive-filter-grade-radios">
 						<?php
 						$archive_grade_sidebar = [
-							''         => __( 'همهٔ مقاطع', 'hello-elementor' ),
 							'p1'       => __( 'وکیل پایه یک', 'hello-elementor' ),
 							'p2'       => __( 'وکیل پایه دو', 'hello-elementor' ),
 							'karamooz' => __( 'کارآموز وکالت', 'hello-elementor' ),
 						];
-						$slug_ok = static function ( $s ) {
-							return in_array( $s, [ 'p1', 'p2', 'karamooz' ], true );
-						};
 						foreach ( $archive_grade_sidebar as $gval => $glabel ) :
-							$gval = (string) $gval;
-							if ( '' === $gval ) {
-								$radio_checked = ( '' === $grade_slug ) || ! $slug_ok( $grade_slug );
-							} else {
-								$radio_checked = ( $grade_slug === $gval );
-							}
+							$gval          = (string) $gval;
+							$grade_checked = in_array( $gval, $grade_slugs, true );
 							?>
 							<label class="archive-grade-radio-label">
-								<input type="radio" name="grade_sidebar" value="<?php echo esc_attr( $gval ); ?>" form="archive-filters-form" <?php checked( $radio_checked ); ?> autocomplete="off"/>
+								<input type="checkbox" name="grade[]" value="<?php echo esc_attr( $gval ); ?>" form="archive-filters-form" <?php checked( $grade_checked ); ?> autocomplete="off"/>
 								<?php echo esc_html( $glabel ); ?>
 							</label>
 							<?php
@@ -575,7 +558,7 @@ get_header();
 									<span class="material-symbols-outlined archive-verified-icon">verified</span>
 								</div>
 								<?php
-								/** پایهٔ وکالت: فقط با وجود ترم تخصص در تاکسونومی؛ بدون آن، خط تخصص از متن پایه (متای hvl_lawyer_grade) پر می‌شود — همان hovalvakil_lawyer_card_specialty_labels(). */
+								// Grade line + card labels (hovalvakil_lawyer_card_specialty_labels).
 								if ( $has_specialty_terms && '' !== trim( $lawyer_grade_tag ) ) :
 									?>
 									<p class="archive-lawyer-grade"><?php echo esc_html( $lawyer_grade_tag ); ?></p>
@@ -606,8 +589,6 @@ get_header();
 									<?php endif; ?>
 									<?php if ( '' !== $license_exp_disp ) : ?>
 										<span>انقضا: <?php echo esc_html( $license_exp_disp ); ?></span>
-									<?php else : ?>
-										<span>مشاوره حقوقی</span>
 									<?php endif; ?>
 								</div>
 								<div class="archive-lawyer-meta">
@@ -687,7 +668,7 @@ get_header();
 	const archiveActiveFiltersEl = document.getElementById('archive-active-filters');
 	const ajaxApiBase = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/lawyers' ) ) ); ?>;
 	const archiveLawyerPlaceholder = <?php echo wp_json_encode( esc_url_raw( $hvl_archive_lawyer_placeholder ) ); ?>;
-	const archiveInitialSlugs = <?php echo wp_json_encode( [ 'city_term' => $selected_city_slug, 'province_term' => $selected_province_slug, 'grade' => $grade_slug ], JSON_UNESCAPED_UNICODE ); ?>;
+	const archiveInitialSlugs = <?php echo wp_json_encode( [ 'city_term' => $selected_city_slug, 'province_term' => $selected_province_slug, 'grade' => $grade_slugs ], JSON_UNESCAPED_UNICODE ); ?>;
 	const archiveGradeLabels = { p1: 'وکیل پایه یک', p2: 'وکیل پایه دو', karamooz: 'کارآموز وکالت' };
 	const ARCHIVE_PER_PAGE = 20;
 	let archiveDebounceTimer = null;
@@ -718,36 +699,30 @@ get_header();
 	filtersBackdrop?.addEventListener('click', closeFiltersOffcanvas);
 	filtersCloseBtn?.addEventListener('click', closeFiltersOffcanvas);
 
-	function syncSidebarGradeRadiosFromSelect() {
-		const gvRaw = gradeSelect?.value?.trim() || '';
-		const gv = archiveGradeLabels[gvRaw] ? gvRaw : '';
-		document.querySelectorAll('#archive-grade-group input[name="grade_sidebar"]').forEach((radio) => {
-			const v = radio.value;
-			if (!v) {
-				radio.checked = !gv;
-				return;
-			}
-			radio.checked = gv === v;
-		});
-	}
-
-	document.querySelectorAll('#archive-grade-group input[name="grade_sidebar"]').forEach((radio) => {
-		radio.addEventListener('change', () => {
-			if (!gradeSelect) return;
-			gradeSelect.value = radio.value || '';
+	document.querySelectorAll('#archive-grade-group input[name="grade[]"]').forEach((box) => {
+		box.addEventListener('change', () => {
 			runArchiveAjaxFilter();
 		});
 	});
 
 	// Submit filters when checkbox changes.
 	document.querySelectorAll('#archive-filters-panel input[type="checkbox"]').forEach((cb) => {
+		if (cb.name === 'grade[]') return;
 		cb.addEventListener('change', () => {
 			runArchiveAjaxFilter();
 		});
 	});
 
 	gradeSelect?.addEventListener('change', () => {
-		syncSidebarGradeRadiosFromSelect();
+		const boxes = document.querySelectorAll('#archive-filters-panel input[type="checkbox"][name="grade[]"]');
+		boxes.forEach((b) => {
+			b.checked = false;
+		});
+		const selectedValue = gradeSelect.value?.trim() || '';
+		if (selectedValue) {
+			const target = document.querySelector(`#archive-filters-panel input[type="checkbox"][name="grade[]"][value="${CSS.escape(selectedValue)}"]`);
+			if (target) target.checked = true;
+		}
 		runArchiveAjaxFilter();
 	});
 
@@ -845,9 +820,9 @@ get_header();
 		if (provinceSelect) {
 			provinceSelect.value = provinceSlugs[0] || '';
 		}
-		const gradeRadio = document.querySelector('#archive-grade-group input[name="grade_sidebar"]:checked');
-		if (gradeSelect && gradeRadio) {
-			gradeSelect.value = gradeRadio.value || '';
+		const gradeBoxVals = getCheckedValues('grade[]');
+		if (gradeSelect) {
+			gradeSelect.value = 1 === gradeBoxVals.length ? gradeBoxVals[0] : '';
 		}
 	}
 
@@ -874,6 +849,12 @@ get_header();
 		const selectedCity = citySelect?.value?.trim() || '';
 		const selectedProvince = provinceSelect?.value?.trim() || '';
 		const selectedGrade = gradeSelect?.value?.trim() || '';
+		const mergedGradeSlugs = Array.from(
+			new Set([
+				...getCheckedValues('grade[]'),
+				...(selectedGrade && archiveGradeLabels[selectedGrade] ? [selectedGrade] : []),
+			])
+		);
 		const mergedCitySlugs = Array.from(new Set([...getCheckedValues('city_term[]'), ...(selectedCity ? [selectedCity] : [])]));
 		const mergedProvinceSlugs = Array.from(new Set([...getCheckedValues('province_term[]'), ...(selectedProvince ? [selectedProvince] : [])]));
 		const parts = [];
@@ -886,8 +867,9 @@ get_header();
 			const names = mergedCitySlugs.map((s) => archiveTermDisplayName('city', s)).filter(Boolean);
 			if (names.length) parts.push(`شهر: ${names.join('، ')}`);
 		}
-		if (selectedGrade && archiveGradeLabels[selectedGrade]) {
-			parts.push(`پایه: ${archiveGradeLabels[selectedGrade]}`);
+		if (mergedGradeSlugs.length) {
+			const names = mergedGradeSlugs.map((g) => archiveGradeLabels[g]).filter(Boolean);
+			if (names.length) parts.push(`پایه: ${names.join('، ')}`);
 		}
 		if (!parts.length) {
 			archiveActiveFiltersEl.style.display = 'none';
@@ -898,12 +880,14 @@ get_header();
 		archiveActiveFiltersEl.textContent = `فیلتر فعال: ${parts.join(' | ')}`;
 	}
 
-	function updateArchiveUrlState({ q, provinceSlugs, citySlugs, grade, page }) {
+	function updateArchiveUrlState({ q, provinceSlugs, citySlugs, gradeSlugs, page }) {
 		const params = new URLSearchParams();
 		if (q) params.set('q', q);
 		provinceSlugs.forEach((slug) => params.append('province_term[]', slug));
 		citySlugs.forEach((slug) => params.append('city_term[]', slug));
-		if (grade) params.set('grade', grade);
+		(gradeSlugs || []).forEach((g) => {
+			if (g && archiveGradeLabels[g]) params.append('grade[]', g);
+		});
 		if (page && page > 1) params.set('paged', String(page));
 		const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
 		window.history.replaceState({}, '', nextUrl);
@@ -929,7 +913,7 @@ get_header();
 			const fileNo = (item.license_no || '').toString().trim();
 			const fileTag = fileNo ? `<span>${escapeHtml(`شماره پروانه: ${fileNo}`)}</span>` : '';
 			const expDisp = escapeHtml(item.license_expires_display || '');
-			const tag3 = expDisp ? `انقضا: ${expDisp}` : 'مشاوره حقوقی';
+			const tag3 = expDisp ? `انقضا: ${expDisp}` : '';
 			const loc = escapeHtml(item.location_line || item.city || '—');
 			const specText = (item.specialty || '').toString().trim();
 			const specialtyBlock = archiveMeaningfulText(specText)
@@ -957,7 +941,7 @@ get_header();
 						<div class="archive-lawyer-tags">
 							${fileTag}
 							${prov ? `<span>${prov}</span>` : ''}
-							<span>${tag3}</span>
+							${tag3 ? `<span>${tag3}</span>` : ''}
 						</div>
 						<div class="archive-lawyer-meta">
 							${experienceBlock}
@@ -1014,13 +998,20 @@ get_header();
 
 		const mergedCitySlugs = Array.from(new Set([...citySlugs, ...(selectedCity ? [selectedCity] : [])]));
 		const mergedProvinceSlugs = Array.from(new Set([...provinceSlugs, ...(selectedProvince ? [selectedProvince] : [])]));
-		const gradeVal = gradeSelect?.value?.trim() || '';
+		const gradeFromBoxes = getCheckedValues('grade[]');
+		const gradeFromSelect = gradeSelect?.value?.trim() || '';
+		const mergedGradeSlugs = Array.from(
+			new Set([
+				...gradeFromBoxes,
+				...(gradeFromSelect && archiveGradeLabels[gradeFromSelect] ? [gradeFromSelect] : []),
+			])
+		);
 
 		const params = new URLSearchParams({ per_page: String(ARCHIVE_PER_PAGE), page: String(page) });
 		if (q) params.set('q', q);
 		if (mergedProvinceSlugs.length) params.set('province_term', mergedProvinceSlugs.join(','));
 		if (mergedCitySlugs.length) params.set('city_term', mergedCitySlugs.join(','));
-		if (gradeVal && archiveGradeLabels[gradeVal]) params.set('grade', gradeVal);
+		if (mergedGradeSlugs.length) params.set('grade', mergedGradeSlugs.join(','));
 
 		if (archiveFetchController) {
 			archiveFetchController.abort();
@@ -1050,7 +1041,7 @@ get_header();
 				q,
 				provinceSlugs: mergedProvinceSlugs,
 				citySlugs: mergedCitySlugs,
-				grade: gradeVal && archiveGradeLabels[gradeVal] ? gradeVal : '',
+				gradeSlugs: mergedGradeSlugs,
 				page: archiveCurrentPage,
 			});
 			if (resultCount) {
@@ -1084,11 +1075,11 @@ get_header();
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	});
 
-	document.querySelectorAll('#archive-filters-panel input[name="city_term[]"], #archive-filters-panel input[name="province_term[]"]').forEach((el) => {
+	document.querySelectorAll('#archive-filters-panel input[name="city_term[]"], #archive-filters-panel input[name="province_term[]"], #archive-filters-panel input[name="grade[]"]').forEach((el) => {
 		el.addEventListener('change', syncTopFiltersFromSidebar);
 	});
 
-	/** Read repeated / bracketed GET params (e.g. specialty[], specialty[0], specialty=a,b). */
+	/** Read repeated / bracketed GET params (e.g. city_term[], province_term[]). */
 	function getQuerySlugList(paramBase) {
 		const p = new URLSearchParams(window.location.search);
 		const out = [];
@@ -1116,6 +1107,37 @@ get_header();
 			pushSlug(single);
 		}
 		return out;
+	}
+
+	function getQueryGradeSlugs() {
+		const p = new URLSearchParams(window.location.search);
+		const out = [];
+		const seen = new Set();
+		function pushPiece(raw) {
+			String(raw || '')
+				.split(',')
+				.map((s) => s.trim().toLowerCase())
+				.forEach((t) => {
+					if (t && archiveGradeLabels[t] && !seen.has(t)) {
+						seen.add(t);
+						out.push(t);
+					}
+				});
+		}
+		for (const [k, v] of p.entries()) {
+			if (!v) continue;
+			if (k === 'grade' || k === 'grade[]' || (k.startsWith('grade[') && k.endsWith(']'))) {
+				pushPiece(v);
+			}
+		}
+		return out;
+	}
+
+	function setSidebarChecksBySlugs(inputName, slugs) {
+		const want = new Set((slugs || []).map((s) => String(s).trim()).filter(Boolean));
+		document.querySelectorAll(`#archive-filters-panel input[type="checkbox"][name="${inputName}"]`).forEach((box) => {
+			box.checked = want.has(box.value);
+		});
 	}
 
 	/** Pick <option> for a taxonomy slug (exact, then decoded / loose match for Persian URLs). */
@@ -1168,15 +1190,17 @@ get_header();
 	function initArchiveFiltersFromPageState() {
 		const urlCityList = getQuerySlugList('city_term');
 		const urlProvList = getQuerySlugList('province_term');
+		const urlGradeList = getQueryGradeSlugs();
 		const firstCity = urlCityList[0] || (archiveInitialSlugs && archiveInitialSlugs.city_term) || '';
 		const firstProv = urlProvList[0] || (archiveInitialSlugs && archiveInitialSlugs.province_term) || '';
-		const urlGradeRaw = (new URLSearchParams(window.location.search)).get('grade') || '';
-		const urlGrade = urlGradeRaw.trim().toLowerCase();
-		const initGradeRaw = (archiveInitialSlugs && archiveInitialSlugs.grade) ? String(archiveInitialSlugs.grade).trim().toLowerCase() : '';
-		const fromInit = initGradeRaw && archiveGradeLabels[initGradeRaw] ? initGradeRaw : '';
-		const firstGrade = (urlGrade && archiveGradeLabels[urlGrade] ? urlGrade : '') || fromInit;
-		if (gradeSelect && firstGrade && archiveGradeLabels[firstGrade]) {
-			gradeSelect.value = firstGrade;
+		const initGrades = Array.isArray(archiveInitialSlugs && archiveInitialSlugs.grade)
+			? archiveInitialSlugs.grade
+					.map((g) => String(g || '').trim().toLowerCase())
+					.filter((g) => archiveGradeLabels[g])
+			: [];
+		const mergedGrades = urlGradeList.length ? urlGradeList : initGrades;
+		if (gradeSelect) {
+			gradeSelect.value = mergedGrades.length === 1 ? mergedGrades[0] : '';
 		}
 
 		if (citySelect && firstCity) {
@@ -1204,8 +1228,8 @@ get_header();
 		// Keep sidebar filters active based on URL/query, even if select options are temporarily narrowed.
 		setSidebarChecksBySlugs('city_term[]', urlCityList.length ? urlCityList : (firstCity ? [firstCity] : []));
 		setSidebarChecksBySlugs('province_term[]', urlProvList.length ? urlProvList : (firstProv ? [firstProv] : []));
+		setSidebarChecksBySlugs('grade[]', mergedGrades);
 
-		syncSidebarGradeRadiosFromSelect();
 		syncSidebarCheckboxesFromTopSelects();
 		syncTopFiltersFromSidebar();
 		updateArchiveActiveFiltersDisplay();

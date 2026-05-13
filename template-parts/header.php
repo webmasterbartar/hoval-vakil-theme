@@ -10,7 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $site_name = 'هوالوکیل';
 $header_phone   = (string) get_theme_mod( 'hvl_footer_phone', '۰۲۱۲۲۰۰۰۷۵۲' );
-$header_address = (string) get_theme_mod( 'hvl_footer_address', 'تهران -بلوار کاوه نرسیده به چهارراه دولت پ ۱۲' );
 $header_phone_ascii = strtr(
 	$header_phone,
 	[
@@ -166,21 +165,6 @@ $hvl_lawyers_rest_url     = rest_url( 'hovalvakil/v1/lawyers' );
 ?>
 
 <header id="site-header" class="site-header hvl-header">
-	<div class="hvl-header-utility">
-		<div class="container hvl-header-utility-inner">
-			<div class="hvl-header-utility-left">
-				<div class="hvl-header-utility-address">
-					<span class="hvl-header-utility-icon material-symbols-outlined">location_on</span>
-					<span><?php echo esc_html( $header_address ); ?></span>
-				</div>
-				<div class="hvl-header-utility-phone">
-					<span class="hvl-header-utility-icon material-symbols-outlined">phone</span>
-					<span dir="ltr"><?php echo esc_html( $header_phone ); ?></span>
-				</div>
-			</div>
-		</div>
-	</div>
-
 	<div class="hvl-header-main">
 		<div class="container hvl-header-main-inner">
 			<div class="hvl-header-logo">
