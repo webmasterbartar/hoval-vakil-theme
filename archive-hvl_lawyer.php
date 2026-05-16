@@ -79,8 +79,7 @@ foreach ( hovalvakil_get_param_array( 'grade' ) as $g_raw ) {
 		$grade_slugs[] = $g;
 	}
 }
-$grade_slugs         = array_values( array_unique( $grade_slugs ) );
-$grade_select_value  = 1 === count( $grade_slugs ) ? $grade_slugs[0] : '';
+$grade_slugs = array_values( array_unique( $grade_slugs ) );
 
 $tax_query = [];
 
@@ -333,15 +332,6 @@ get_header();
 				</select>
 			</div>
 			<div class="archive-field">
-				<span class="material-symbols-outlined">badge</span>
-				<select name="grade" id="archive-grade-select">
-					<option value=""><?php esc_html_e( 'همهٔ مقاطع', 'hello-elementor' ); ?></option>
-					<option value="p1" <?php selected( $grade_select_value, 'p1' ); ?>><?php esc_html_e( 'وکیل پایه یک', 'hello-elementor' ); ?></option>
-					<option value="p2" <?php selected( $grade_select_value, 'p2' ); ?>><?php esc_html_e( 'وکیل پایه دو', 'hello-elementor' ); ?></option>
-					<option value="karamooz" <?php selected( $grade_select_value, 'karamooz' ); ?>><?php esc_html_e( 'کارآموز وکالت', 'hello-elementor' ); ?></option>
-				</select>
-			</div>
-			<div class="archive-field">
 				<span class="material-symbols-outlined">person_search</span>
 				<input id="archive-q-input" type="text" name="q" placeholder="نام وکیل یا شهر" value="<?php echo esc_attr( $q ); ?>"/>
 			</div>
@@ -419,7 +409,7 @@ get_header();
 
 				<div class="archive-filter-group">
 					<h3><?php esc_html_e( 'پایه', 'hello-elementor' ); ?></h3>
-					<div id="archive-grade-group" class="archive-filter-group-content archive-filter-grade-radios">
+					<div id="archive-grade-group" class="archive-filter-list-scroll">
 						<?php
 						$archive_grade_sidebar = [
 							'p1'       => __( 'وکیل پایه یک', 'hello-elementor' ),
@@ -430,7 +420,7 @@ get_header();
 							$gval          = (string) $gval;
 							$grade_checked = in_array( $gval, $grade_slugs, true );
 							?>
-							<label class="archive-grade-radio-label">
+							<label>
 								<input type="checkbox" name="grade[]" value="<?php echo esc_attr( $gval ); ?>" form="archive-filters-form" <?php checked( $grade_checked ); ?> autocomplete="off"/>
 								<?php echo esc_html( $glabel ); ?>
 							</label>
@@ -572,6 +562,10 @@ get_header();
 									if ( '' === $t || '—' === $t || '–' === $t || '-' === $t ) {
 										continue;
 									}
+									// Placeholder تخصص در داده قدیمی؛ نمایش نده.
+									if ( 'مشاوره حقوقی' === $t ) {
+										continue;
+									}
 									$archive_spec_name = $t;
 									break;
 								}
@@ -657,7 +651,6 @@ get_header();
 	const filtersCloseBtn = document.getElementById('archive-filters-close');
 	const filtersPanel = document.getElementById('archive-filters-panel');
 	const filtersBackdrop = document.getElementById('archive-filters-backdrop');
-	const gradeSelect = document.getElementById('archive-grade-select');
 	const citySelect = document.getElementById('archive-city-select');
 	const provinceSelect = document.getElementById('archive-province-select');
 	const searchForm = document.getElementById('archive-search-form');
@@ -699,31 +692,10 @@ get_header();
 	filtersBackdrop?.addEventListener('click', closeFiltersOffcanvas);
 	filtersCloseBtn?.addEventListener('click', closeFiltersOffcanvas);
 
-	document.querySelectorAll('#archive-grade-group input[name="grade[]"]').forEach((box) => {
-		box.addEventListener('change', () => {
-			runArchiveAjaxFilter();
-		});
-	});
-
-	// Submit filters when checkbox changes.
 	document.querySelectorAll('#archive-filters-panel input[type="checkbox"]').forEach((cb) => {
-		if (cb.name === 'grade[]') return;
 		cb.addEventListener('change', () => {
 			runArchiveAjaxFilter();
 		});
-	});
-
-	gradeSelect?.addEventListener('change', () => {
-		const boxes = document.querySelectorAll('#archive-filters-panel input[type="checkbox"][name="grade[]"]');
-		boxes.forEach((b) => {
-			b.checked = false;
-		});
-		const selectedValue = gradeSelect.value?.trim() || '';
-		if (selectedValue) {
-			const target = document.querySelector(`#archive-filters-panel input[type="checkbox"][name="grade[]"][value="${CSS.escape(selectedValue)}"]`);
-			if (target) target.checked = true;
-		}
-		runArchiveAjaxFilter();
 	});
 
 	citySelect?.addEventListener('change', () => {
@@ -820,10 +792,6 @@ get_header();
 		if (provinceSelect) {
 			provinceSelect.value = provinceSlugs[0] || '';
 		}
-		const gradeBoxVals = getCheckedValues('grade[]');
-		if (gradeSelect) {
-			gradeSelect.value = 1 === gradeBoxVals.length ? gradeBoxVals[0] : '';
-		}
 	}
 
 	function archiveTermDisplayName(type, slug) {
@@ -833,6 +801,10 @@ get_header();
 		if (type === 'province') {
 			select = provinceSelect;
 			inputName = 'province_term[]';
+		}
+		if (type === 'grade') {
+			const g = String(slug || '').trim().toLowerCase();
+			return archiveGradeLabels[g] || g;
 		}
 		const opt = select?.querySelector(`option[value="${CSS.escape(slug)}"]`);
 		if (opt && opt.value) return opt.textContent.trim();
@@ -848,13 +820,7 @@ get_header();
 		const qLine = qTrim.length >= 2 ? qTrim : '';
 		const selectedCity = citySelect?.value?.trim() || '';
 		const selectedProvince = provinceSelect?.value?.trim() || '';
-		const selectedGrade = gradeSelect?.value?.trim() || '';
-		const mergedGradeSlugs = Array.from(
-			new Set([
-				...getCheckedValues('grade[]'),
-				...(selectedGrade && archiveGradeLabels[selectedGrade] ? [selectedGrade] : []),
-			])
-		);
+		const mergedGradeSlugs = getCheckedValues('grade[]');
 		const mergedCitySlugs = Array.from(new Set([...getCheckedValues('city_term[]'), ...(selectedCity ? [selectedCity] : [])]));
 		const mergedProvinceSlugs = Array.from(new Set([...getCheckedValues('province_term[]'), ...(selectedProvince ? [selectedProvince] : [])]));
 		const parts = [];
@@ -868,7 +834,7 @@ get_header();
 			if (names.length) parts.push(`شهر: ${names.join('، ')}`);
 		}
 		if (mergedGradeSlugs.length) {
-			const names = mergedGradeSlugs.map((g) => archiveGradeLabels[g]).filter(Boolean);
+			const names = mergedGradeSlugs.map((g) => archiveTermDisplayName('grade', g)).filter(Boolean);
 			if (names.length) parts.push(`پایه: ${names.join('، ')}`);
 		}
 		if (!parts.length) {
@@ -916,9 +882,10 @@ get_header();
 			const tag3 = expDisp ? `انقضا: ${expDisp}` : '';
 			const loc = escapeHtml(item.location_line || item.city || '—');
 			const specText = (item.specialty || '').toString().trim();
-			const specialtyBlock = archiveMeaningfulText(specText)
-				? `<p class="archive-lawyer-specialty">${escapeHtml(specText)}</p>`
-				: '';
+			const specialtyBlock =
+				archiveMeaningfulText(specText) && specText !== 'مشاوره حقوقی'
+					? `<p class="archive-lawyer-specialty">${escapeHtml(specText)}</p>`
+					: '';
 			const expText = (item.experience || '').toString().trim();
 			const experienceBlock = archiveMeaningfulText(expText)
 				? `<p><span class="material-symbols-outlined">history_edu</span>${escapeHtml(expText)}</p>`
@@ -998,14 +965,7 @@ get_header();
 
 		const mergedCitySlugs = Array.from(new Set([...citySlugs, ...(selectedCity ? [selectedCity] : [])]));
 		const mergedProvinceSlugs = Array.from(new Set([...provinceSlugs, ...(selectedProvince ? [selectedProvince] : [])]));
-		const gradeFromBoxes = getCheckedValues('grade[]');
-		const gradeFromSelect = gradeSelect?.value?.trim() || '';
-		const mergedGradeSlugs = Array.from(
-			new Set([
-				...gradeFromBoxes,
-				...(gradeFromSelect && archiveGradeLabels[gradeFromSelect] ? [gradeFromSelect] : []),
-			])
-		);
+		const mergedGradeSlugs = getCheckedValues('grade[]').filter((g) => archiveGradeLabels[g]);
 
 		const params = new URLSearchParams({ per_page: String(ARCHIVE_PER_PAGE), page: String(page) });
 		if (q) params.set('q', q);
@@ -1175,14 +1135,6 @@ get_header();
 		}
 	}
 
-	function setSidebarChecksBySlugs(inputName, slugs) {
-		const wanted = new Set((Array.isArray(slugs) ? slugs : []).filter(Boolean));
-		if (!wanted.size) return;
-		document.querySelectorAll(`#archive-filters-panel input[name="${inputName}"]`).forEach((box) => {
-			box.checked = wanted.has(box.value);
-		});
-	}
-
 	/**
 	 * On load: do NOT call syncTopFiltersFromSidebar first — it clears selects when checkboxes
 	 * are still out of sync. Prefer URL + PHP-rendered slugs, then align checkboxes.
@@ -1199,9 +1151,6 @@ get_header();
 					.filter((g) => archiveGradeLabels[g])
 			: [];
 		const mergedGrades = urlGradeList.length ? urlGradeList : initGrades;
-		if (gradeSelect) {
-			gradeSelect.value = mergedGrades.length === 1 ? mergedGrades[0] : '';
-		}
 
 		if (citySelect && firstCity) {
 			const opt = archiveSelectOptionForSlug(citySelect, firstCity);
@@ -1362,16 +1311,6 @@ get_header();
 		margin-bottom: 6px;
 	}
 	.archive-filter-list-scroll label:last-child {
-		margin-bottom: 0;
-	}
-	.archive-filter-grade-radios .archive-grade-radio-label {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 8px;
-		font-size: 0.8125rem;
-	}
-	.archive-filter-grade-radios .archive-grade-radio-label:last-child {
 		margin-bottom: 0;
 	}
 	#archive-results-list {
