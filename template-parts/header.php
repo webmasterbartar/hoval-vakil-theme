@@ -246,7 +246,13 @@ $hvl_lawyers_rest_url     = rest_url( 'hovalvakil/v1/lawyers' );
 				</div>
 			</nav>
 			<div class="hvl-header-actions">
-				<a class="hvl-header-login" href="<?php echo esc_url( home_url( '/my-account/' ) ); ?>">ورود | ثبت‌نام</a>
+				<a id="hvl-lawyer-header-btn" class="hvl-ll-header-btn"
+					href="<?php echo esc_url( home_url( '/vakil-login/' ) ); ?>"
+					data-login-url="<?php echo esc_url( home_url( '/vakil-login/' ) ); ?>"
+					data-panel-url="<?php echo esc_url( home_url( '/vakil-panel/' ) ); ?>">
+					<span class="material-symbols-outlined" aria-hidden="true">person</span>
+					<span id="hvl-lawyer-btn-label">ورود وکیل</span>
+				</a>
 				<button id="hvl-mobile-menu-toggle" class="hvl-header-mobile-toggle" type="button" aria-label="باز کردن منو" aria-expanded="false" aria-controls="hvl-mobile-drawer">
 					<span class="material-symbols-outlined">menu</span>
 				</button>
@@ -372,7 +378,10 @@ $hvl_lawyers_rest_url     = rest_url( 'hovalvakil/v1/lawyers' );
 			</div>
 		</nav>
 		<div class="hvl-mobile-drawer-footer">
-			<a class="hvl-mobile-primary-cta" href="<?php echo esc_url( home_url( '/my-account/' ) ); ?>">ورود | ثبت‌نام</a>
+			<a id="hvl-lawyer-mobile-btn" class="hvl-mobile-primary-cta"
+				href="<?php echo esc_url( home_url( '/vakil-login/' ) ); ?>"
+				data-login-url="<?php echo esc_url( home_url( '/vakil-login/' ) ); ?>"
+				data-panel-url="<?php echo esc_url( home_url( '/vakil-panel/' ) ); ?>">ورود وکیل</a>
 			<a class="hvl-mobile-support-link" href="<?php echo esc_url( 'tel:' . (string) $header_phone_dial ); ?>">
 				<span class="material-symbols-outlined">call</span>
 				پشتیبانی تلفنی <?php echo esc_html( $header_phone ); ?>

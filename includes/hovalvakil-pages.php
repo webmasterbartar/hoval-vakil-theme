@@ -127,6 +127,28 @@ function hovalvakil_maybe_serve_static_page() {
 		}
 	}
 
+	// Serve lawyer login page.
+	if ( 'vakil-login' === hovalvakil_current_request_slug() ) {
+		$template_path = trailingslashit( get_template_directory() ) . 'page-vakil-login.php';
+		if ( file_exists( $template_path ) ) {
+			status_header( 200 );
+			header( 'Content-Type: text/html; charset=UTF-8' );
+			include $template_path;
+			exit;
+		}
+	}
+
+	// Serve lawyer panel page.
+	if ( 'vakil-panel' === hovalvakil_current_request_slug() ) {
+		$template_path = trailingslashit( get_template_directory() ) . 'page-vakil-panel.php';
+		if ( file_exists( $template_path ) ) {
+			status_header( 200 );
+			header( 'Content-Type: text/html; charset=UTF-8' );
+			include $template_path;
+			exit;
+		}
+	}
+
 	// Serve dynamic about page on /about (and legacy /darbare) even if no WP Page exists.
 	$current_slug = hovalvakil_current_request_slug();
 	if ( 'about' === $current_slug || 'darbare' === $current_slug ) {

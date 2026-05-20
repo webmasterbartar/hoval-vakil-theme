@@ -164,26 +164,28 @@ function hovalvakil_lawyer_get_province_name( $post_id ) {
  * @param string $size    Image size.
  * @return string Absolute URL or empty string.
  */
-function hovalvakil_lawyer_profile_image_url( $post_id, $size = 'medium' ) {
-	$post_id = (int) $post_id;
-	$thumb   = get_the_post_thumbnail_url( $post_id, $size );
-	if ( is_string( $thumb ) && '' !== $thumb ) {
-		return esc_url_raw( $thumb );
+if ( ! function_exists( 'hovalvakil_lawyer_profile_image_url' ) ) {
+	function hovalvakil_lawyer_profile_image_url( $post_id, $size = 'medium' ) {
+		$post_id = (int) $post_id;
+		$thumb   = get_the_post_thumbnail_url( $post_id, $size );
+		if ( is_string( $thumb ) && '' !== $thumb ) {
+			return esc_url_raw( $thumb );
+		}
+		$url = trim( (string) get_post_meta( $post_id, 'hvl_photo_url', true ) );
+		if ( '' === $url ) {
+			return '';
+		}
+		// Protocol-relative (//cdn.example/…).
+		if ( 0 === strpos( $url, '//' ) ) {
+			$url = ( is_ssl() ? 'https:' : 'http:' ) . $url;
+		} elseif ( 0 === strpos( $url, '/' ) && 0 !== strpos( $url, '//' ) ) {
+			$url = home_url( $url );
+		}
+		if ( ! function_exists( 'wp_http_validate_url' ) || ! wp_http_validate_url( $url ) ) {
+			return '';
+		}
+		return esc_url_raw( $url );
 	}
-	$url = trim( (string) get_post_meta( $post_id, 'hvl_photo_url', true ) );
-	if ( '' === $url ) {
-		return '';
-	}
-	// Protocol-relative (//cdn.example/…).
-	if ( 0 === strpos( $url, '//' ) ) {
-		$url = ( is_ssl() ? 'https:' : 'http:' ) . $url;
-	} elseif ( 0 === strpos( $url, '/' ) && 0 !== strpos( $url, '//' ) ) {
-		$url = home_url( $url );
-	}
-	if ( ! function_exists( 'wp_http_validate_url' ) || ! wp_http_validate_url( $url ) ) {
-		return '';
-	}
-	return esc_url_raw( $url );
 }
 
 /**

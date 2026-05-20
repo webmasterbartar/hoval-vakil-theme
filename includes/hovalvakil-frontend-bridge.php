@@ -29,11 +29,28 @@ function hovalvakil_is_bridged_template() {
 	if ( is_page_template( 'page-marakez.php' ) || is_page_template( 'page-takha.php' ) || is_page_template( 'page-tamas.php' ) || is_page_template( 'page-darbare.php' ) ) {
 		return true;
 	}
-	if ( in_array( $current_slug, [ 'takha', 'marakez', 'tamas', 'about', 'darbare' ], true ) ) {
+	if ( in_array( $current_slug, [ 'takha', 'marakez', 'tamas', 'about', 'darbare', 'vakil-login', 'vakil-panel' ], true ) ) {
 		return true;
 	}
 	return false;
 }
+
+/**
+ * Enqueue local fonts (Yekan Bakh + Material Symbols) on every page.
+ *
+ * @return void
+ */
+function hovalvakil_enqueue_fonts(): void {
+	$path = get_template_directory() . '/hovalvakil/fonts.css';
+	$ver  = is_readable( $path ) ? (string) filemtime( $path ) : HELLO_ELEMENTOR_VERSION;
+	wp_enqueue_style(
+		'hovalvakil-fonts',
+		get_template_directory_uri() . '/hovalvakil/fonts.css',
+		[],
+		$ver
+	);
+}
+add_action( 'wp_enqueue_scripts', 'hovalvakil_enqueue_fonts', 5 );
 
 /**
  * @return void
@@ -84,10 +101,13 @@ add_action( 'wp_enqueue_scripts', 'hovalvakil_enqueue_footer_assets', 30 );
 function hovalvakil_enqueue_header_assets() {
 	$path = get_template_directory() . '/hovalvakil/header.css';
 	$ver  = is_readable( $path ) ? (string) filemtime( $path ) : HELLO_ELEMENTOR_VERSION;
+	$deps = wp_style_is( 'hovalvakil-main', 'registered' ) || wp_style_is( 'hovalvakil-main', 'enqueued' )
+		? [ 'hovalvakil-main' ]
+		: [];
 	wp_enqueue_style(
 		'hovalvakil-header',
 		get_template_directory_uri() . '/hovalvakil/header.css',
-		[ 'hovalvakil-main' ],
+		$deps,
 		$ver
 	);
 }
@@ -109,10 +129,13 @@ function hovalvakil_enqueue_tamas_assets() {
 
 	$path = get_template_directory() . '/hovalvakil/tamas.css';
 	$ver  = is_readable( $path ) ? (string) filemtime( $path ) : HELLO_ELEMENTOR_VERSION;
+	$tamas_deps = wp_style_is( 'hovalvakil-main', 'registered' ) || wp_style_is( 'hovalvakil-main', 'enqueued' )
+		? [ 'hovalvakil-main' ]
+		: [];
 	wp_enqueue_style(
 		'hovalvakil-tamas',
 		get_template_directory_uri() . '/hovalvakil/tamas.css',
-		[ 'hovalvakil-main' ],
+		$tamas_deps,
 		$ver
 	);
 }
@@ -134,10 +157,13 @@ function hovalvakil_enqueue_darbare_assets() {
 
 	$path = get_template_directory() . '/hovalvakil/darbare.css';
 	$ver  = is_readable( $path ) ? (string) filemtime( $path ) : HELLO_ELEMENTOR_VERSION;
+	$darbare_deps = wp_style_is( 'hovalvakil-main', 'registered' ) || wp_style_is( 'hovalvakil-main', 'enqueued' )
+		? [ 'hovalvakil-main' ]
+		: [];
 	wp_enqueue_style(
 		'hovalvakil-darbare',
 		get_template_directory_uri() . '/hovalvakil/darbare.css',
-		[ 'hovalvakil-main' ],
+		$darbare_deps,
 		$ver
 	);
 }

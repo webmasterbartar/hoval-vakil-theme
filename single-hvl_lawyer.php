@@ -48,6 +48,7 @@ $license_expires_jalali = trim( (string) get_post_meta( $post_id, 'hvl_license_e
 $license_file_url     = (string) get_post_meta( $post_id, 'hvl_license_file_url', true );
 $lawyer_grade         = (string) get_post_meta( $post_id, 'hvl_lawyer_grade', true );
 $mobile               = (string) get_post_meta( $post_id, 'hvl_mobile', true );
+$mobile               = apply_filters( 'hvl_lawyer_show_mobile', true, (int) $post_id ) ? $mobile : '';
 $office_mobile        = (string) get_post_meta( $post_id, 'hvl_office_mobile', true );
 $education            = (string) get_post_meta( $post_id, 'hvl_education', true );
 $records              = (string) get_post_meta( $post_id, 'hvl_records', true );
