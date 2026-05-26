@@ -109,7 +109,7 @@ function hovalvakil_lawyer_query_register_cache_invalidation() {
 		10,
 		6
 	);
-	foreach ( [ 'hvl_city', 'hvl_specialty' ] as $tax ) {
+	foreach ( [ 'hvl_city', 'hvl_specialty', 'hvl_province' ] as $tax ) {
 		add_action(
 			'edited_term',
 			static function ( $term_id, $tt_id, $taxonomy ) use ( $tax ) {
@@ -183,7 +183,442 @@ function hovalvakil_lawyer_cached_term_name_rows( $taxonomy ) {
 }
 
 /**
- * Collect term slugs whose name contains $q (case-insensitive, multibyte).
+ * Compact search key: Persian-normalized label with all spaces/ZWNJ removed.
+ *
+ * @param string $text Input.
+ * @return string
+ */
+function hovalvakil_lawyer_search_compact_key( $text ) {
+	$text = (string) $text;
+	if ( function_exists( 'hovalvakil_normalize_fa_label' ) ) {
+		return hovalvakil_normalize_fa_label( $text );
+	}
+	$text = trim( $text );
+	$text = str_replace(
+		[ "\xE2\x80\x8C", ' ', '‌', 'ـ', 'ك', 'ي', 'ة' ],
+		[ '', '', '', '', 'ک', 'ی', 'ه' ],
+		$text
+	);
+	return $text;
+}
+
+/**
+ * Digits-only key for license search (ASCII).
+ *
+ * @param string $text Input.
+ * @return string
+ */
+function hovalvakil_lawyer_search_digits_key( $text ) {
+	if ( function_exists( 'hovalvakil_lawyer_digits_to_ascii' ) ) {
+		return hovalvakil_lawyer_digits_to_ascii( $text );
+	}
+	return preg_replace( '/\D+/u', '', (string) $text ) ?? '';
+}
+
+/**
+ * Meta keys that may hold lawyer license / external file numbers.
+ *
+ * @return string[]
+ */
+function hovalvakil_lawyer_search_license_meta_keys() {
+	return [ 'hvl_license_no', 'hvl_license', 'hvl_import_external_id' ];
+}
+
+/**
+ * True when query is essentially a number (license search), not a name.
+ *
+ * @param string $q Query.
+ * @return bool
+ */
+function hovalvakil_lawyer_search_is_digit_primary( $q ) {
+	$q = trim( (string) $q );
+	if ( '' === $q ) {
+		return false;
+	}
+	$digits = hovalvakil_lawyer_search_digits_key( $q );
+	if ( strlen( $digits ) < 2 ) {
+		return false;
+	}
+	$rest = preg_replace( '/[0-9۰-۹٠-٩\/\-\s\.,،‌_\x{200c}\x{00a0}]+/u', '', $q );
+	return '' === trim( (string) $rest );
+}
+
+function hovalvakil_lawyer_search_is_license_like( $q ) {
+	$q      = trim( (string) $q );
+	$digits = hovalvakil_lawyer_search_digits_key( $q );
+	$len    = mb_strlen( $q );
+	if ( strlen( $digits ) < 3 || $len < 1 ) {
+		return false;
+	}
+	return strlen( $digits ) >= (int) ceil( $len * 0.45 );
+}
+
+/**
+ * Whether a search string should trigger strong search (name ≥2 chars or license ≥3 digits).
+ *
+ * @param string $q Query.
+ * @return bool
+ */
+function hovalvakil_lawyer_search_query_is_usable( $q ) {
+	$q = trim( (string) $q );
+	if ( '' === $q ) {
+		return false;
+	}
+	$digits = hovalvakil_lawyer_search_digits_key( $q );
+	$rest   = preg_replace( '/[0-9۰-۹٠-٩\/\-\s\.,،‌_\x{200c}\x{00a0}]+/u', '', $q );
+	if ( '' === trim( (string) $rest ) && strlen( $digits ) > 0 ) {
+		return strlen( $digits ) >= 2;
+	}
+	if ( mb_strlen( $q ) >= 2 ) {
+		return true;
+	}
+	return strlen( $digits ) >= 2;
+}
+
+/**
+ * SQL expression: strip separators and normalize Persian/Arabic digits to ASCII in a column.
+ *
+ * @param string $column SQL column reference.
+ * @return string
+ */
+function hovalvakil_lawyer_sql_digits_only_expr( $column ) {
+	$expr = $column;
+	foreach (
+		[
+			'۰' => '0',
+			'۱' => '1',
+			'۲' => '2',
+			'۳' => '3',
+			'۴' => '4',
+			'۵' => '5',
+			'۶' => '6',
+			'۷' => '7',
+			'۸' => '8',
+			'۹' => '9',
+			'٠' => '0',
+			'١' => '1',
+			'٢' => '2',
+			'٣' => '3',
+			'٤' => '4',
+			'٥' => '5',
+			'٦' => '6',
+			'٧' => '7',
+			'٨' => '8',
+			'٩' => '9',
+		] as $from => $to
+	) {
+		$expr = "REPLACE({$expr}, '{$from}', '{$to}')";
+	}
+	foreach ( [ '/', '-', ' ', '‌', "\xE2\x80\x8C", '_', '.', ',', '،' ] as $sep ) {
+		$expr = "REPLACE({$expr}, '{$sep}', '')";
+	}
+	return $expr;
+}
+
+/**
+ * SQL expression: compact Persian text column (spaces/ZWNJ stripped, ي→ی).
+ *
+ * @param string $column SQL column reference.
+ * @return string
+ */
+function hovalvakil_lawyer_sql_compact_text_expr( $column ) {
+	$expr = $column;
+	foreach (
+		[
+			[ ' ', '' ],
+			[ '‌', '' ],
+			[ "\xE2\x80\x8C", '' ],
+			[ 'ـ', '' ],
+			[ 'ي', 'ی' ],
+			[ 'ك', 'ک' ],
+			[ 'ة', 'ه' ],
+		] as $pair
+	) {
+		$from = $pair[0];
+		$to   = $pair[1];
+		$expr = "REPLACE({$expr}, '{$from}', '{$to}')";
+	}
+	return $expr;
+}
+
+/**
+ * @param string   $where WHERE clause.
+ * @param WP_Query $query Query.
+ * @return string
+ */
+function hovalvakil_lawyer_posts_where_compact_title_search( $where, $query ) {
+	$needle = isset( $GLOBALS['hovalvakil_lawyer_compact_search_needle'] )
+		? (string) $GLOBALS['hovalvakil_lawyer_compact_search_needle']
+		: '';
+	if ( '' === $needle || ! $query instanceof WP_Query ) {
+		return $where;
+	}
+	$pt = $query->get( 'post_type' );
+	if ( 'hvl_lawyer' !== $pt && ( ! is_array( $pt ) || ! in_array( 'hvl_lawyer', $pt, true ) ) ) {
+		return $where;
+	}
+	global $wpdb;
+	$expr  = hovalvakil_lawyer_sql_compact_text_expr( "{$wpdb->posts}.post_title" );
+	$where .= $wpdb->prepare( " AND ( {$expr} LIKE %s )", '%' . $wpdb->esc_like( $needle ) . '%' );
+	return $where;
+}
+
+/**
+ * @param string   $where WHERE clause.
+ * @param WP_Query $query Query.
+ * @return string
+ */
+function hovalvakil_lawyer_posts_where_license_meta_search( $where, $query ) {
+	$raw    = isset( $GLOBALS['hovalvakil_lawyer_license_search_raw'] )
+		? trim( (string) $GLOBALS['hovalvakil_lawyer_license_search_raw'] )
+		: '';
+	$digits = isset( $GLOBALS['hovalvakil_lawyer_license_search_digits'] )
+		? (string) $GLOBALS['hovalvakil_lawyer_license_search_digits']
+		: '';
+
+	if ( ( '' === $raw && strlen( $digits ) < 2 ) || ! $query instanceof WP_Query ) {
+		return $where;
+	}
+	$pt = $query->get( 'post_type' );
+	if ( 'hvl_lawyer' !== $pt && ( ! is_array( $pt ) || ! in_array( 'hvl_lawyer', $pt, true ) ) ) {
+		return $where;
+	}
+
+	global $wpdb;
+	$keys    = hovalvakil_lawyer_search_license_meta_keys();
+	$ors     = [];
+	$norm    = hovalvakil_lawyer_sql_digits_only_expr( 'pm.meta_value' );
+
+	if ( mb_strlen( $raw ) >= 2 ) {
+		$ors[] = $wpdb->prepare( 'pm.meta_value LIKE %s', '%' . $wpdb->esc_like( $raw ) . '%' );
+		if ( function_exists( 'hovalvakil_lawyer_digits_to_fa' ) ) {
+			$fa_raw = hovalvakil_lawyer_digits_to_fa( $raw );
+			if ( $fa_raw !== $raw ) {
+				$ors[] = $wpdb->prepare( 'pm.meta_value LIKE %s', '%' . $wpdb->esc_like( $fa_raw ) . '%' );
+			}
+		}
+	}
+	if ( strlen( $digits ) >= 2 ) {
+		$ors[] = $wpdb->prepare( "{$norm} LIKE %s", $wpdb->esc_like( $digits ) . '%' );
+		$ors[] = $wpdb->prepare( "{$norm} LIKE %s", '%' . $wpdb->esc_like( $digits ) . '%' );
+	}
+
+	if ( empty( $ors ) ) {
+		return $where;
+	}
+
+	$placeholders = implode( ', ', array_fill( 0, count( $keys ), '%s' ) );
+	$sql          = " AND EXISTS (
+		SELECT 1 FROM {$wpdb->postmeta} pm
+		WHERE pm.post_id = {$wpdb->posts}.ID
+		AND pm.meta_key IN ({$placeholders})
+		AND (" . implode( ' OR ', $ors ) . ')
+	)';
+	$where       .= $wpdb->prepare( $sql, ...$keys );
+	return $where;
+}
+
+/**
+ * Fast license lookup via SQL (no full-table WP_Query scan).
+ *
+ * @param string $q     Search string.
+ * @param int    $limit Max IDs.
+ * @return int[]
+ */
+/**
+ * Whether normalized license digits for a post contain the needle digit string.
+ *
+ * @param int    $post_id       Post ID.
+ * @param string $needle_digits ASCII digits only.
+ * @return bool
+ */
+function hovalvakil_lawyer_post_license_contains_digits( $post_id, $needle_digits, $prefix_only = false ) {
+	$needle_digits = (string) $needle_digits;
+	if ( '' === $needle_digits ) {
+		return false;
+	}
+	$post_id = (int) $post_id;
+	foreach ( hovalvakil_lawyer_search_license_meta_keys() as $meta_key ) {
+		$raw = trim( (string) get_post_meta( $post_id, $meta_key, true ) );
+		if ( '' === $raw ) {
+			continue;
+		}
+		$norm = hovalvakil_lawyer_search_digits_key( $raw );
+		if ( '' === $norm ) {
+			continue;
+		}
+		if ( $prefix_only ) {
+			if ( 0 === strpos( $norm, $needle_digits ) ) {
+				return true;
+			}
+		} elseif ( false !== strpos( $norm, $needle_digits ) ) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Keep only IDs whose license meta actually contains $needle_digits.
+ *
+ * @param int[]  $ids           Post IDs.
+ * @param string $needle_digits ASCII digits.
+ * @return int[]
+ */
+function hovalvakil_lawyer_filter_ids_license_digits( array $ids, $needle_digits, $prefix_only = false ) {
+	$needle_digits = (string) $needle_digits;
+	if ( '' === $needle_digits ) {
+		return [];
+	}
+	$out = [];
+	foreach ( $ids as $id ) {
+		$id = (int) $id;
+		if ( $id > 0 && hovalvakil_lawyer_post_license_contains_digits( $id, $needle_digits, $prefix_only ) ) {
+			$out[] = $id;
+		}
+	}
+	return array_values( array_unique( $out ) );
+}
+
+/**
+ * Restrict ID list to posts that also match tax/meta filters.
+ *
+ * @param int[]                $ids   Candidate IDs.
+ * @param array<string, mixed> $extra WP_Query args (tax_query, meta_query).
+ * @return int[]
+ */
+function hovalvakil_lawyer_filter_post_ids_with_query( array $ids, array $extra ) {
+	$ids = array_values( array_filter( array_map( 'intval', $ids ) ) );
+	if ( empty( $ids ) ) {
+		return [];
+	}
+	$args = array_merge(
+		[
+			'post_type'              => 'hvl_lawyer',
+			'post_status'            => 'publish',
+			'post__in'               => $ids,
+			'posts_per_page'         => count( $ids ),
+			'orderby'                => 'post__in',
+			'fields'                 => 'ids',
+			'no_found_rows'          => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => false,
+		],
+		$extra
+	);
+	$found = get_posts( $args );
+	return is_array( $found ) ? array_values( array_map( 'intval', $found ) ) : [];
+}
+
+function hovalvakil_lawyer_license_search_post_ids_direct( $q, $limit = 50 ) {
+	global $wpdb;
+
+	$q          = trim( (string) $q );
+	$digits     = hovalvakil_lawyer_search_digits_key( $q );
+	$digit_only   = hovalvakil_lawyer_search_is_digit_primary( $q );
+	$prefix_only  = $digit_only && strlen( $digits ) >= 2;
+	if ( '' === $q || ( strlen( $digits ) < 2 && mb_strlen( $q ) < 2 ) ) {
+		return [];
+	}
+
+	$keys = hovalvakil_lawyer_search_license_meta_keys();
+	$ors  = [];
+	$norm = hovalvakil_lawyer_sql_digits_only_expr( 'pm.meta_value' );
+
+	// Pure digit queries: only license meta; prefer prefix (102 → 102142).
+	if ( ! $digit_only && mb_strlen( $q ) >= 2 ) {
+		$ors[] = $wpdb->prepare( 'pm.meta_value LIKE %s', '%' . $wpdb->esc_like( $q ) . '%' );
+		if ( function_exists( 'hovalvakil_lawyer_digits_to_fa' ) ) {
+			$fa_q = hovalvakil_lawyer_digits_to_fa( $q );
+			if ( $fa_q !== $q ) {
+				$ors[] = $wpdb->prepare( 'pm.meta_value LIKE %s', '%' . $wpdb->esc_like( $fa_q ) . '%' );
+			}
+		}
+	}
+	if ( strlen( $digits ) >= 2 ) {
+		if ( $prefix_only ) {
+			$ors[] = $wpdb->prepare( "{$norm} LIKE %s", $wpdb->esc_like( $digits ) . '%' );
+		} else {
+			$ors[] = $wpdb->prepare( "{$norm} LIKE %s", '%' . $wpdb->esc_like( $digits ) . '%' );
+		}
+		$ors[] = $wpdb->prepare( 'pm.meta_value = %s', $digits );
+		if ( function_exists( 'hovalvakil_lawyer_digits_to_fa' ) ) {
+			$fa_digits = hovalvakil_lawyer_digits_to_fa( $digits );
+			if ( $fa_digits !== $digits ) {
+				$ors[] = $wpdb->prepare( 'pm.meta_value = %s', $fa_digits );
+				if ( $prefix_only ) {
+					$ors[] = $wpdb->prepare( 'pm.meta_value LIKE %s', $wpdb->esc_like( $fa_digits ) . '%' );
+				} else {
+					$ors[] = $wpdb->prepare( 'pm.meta_value LIKE %s', '%' . $wpdb->esc_like( $fa_digits ) . '%' );
+				}
+			}
+		}
+	}
+
+	if ( empty( $ors ) ) {
+		return [];
+	}
+
+	$limit        = max( 1, min( 500, (int) $limit ) );
+	$placeholders = implode( ', ', array_fill( 0, count( $keys ), '%s' ) );
+	$sql          = "SELECT DISTINCT pm.post_id
+		FROM {$wpdb->postmeta} pm
+		INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+			AND p.post_type = 'hvl_lawyer'
+			AND p.post_status = 'publish'
+		WHERE pm.meta_key IN ({$placeholders})
+		AND (" . implode( ' OR ', $ors ) . ")
+		LIMIT %d";
+
+	$prepared = $wpdb->prepare( $sql, ...array_merge( $keys, [ $limit ] ) );
+	$ids      = $wpdb->get_col( $prepared );
+	$ids      = array_values( array_filter( array_map( 'intval', is_array( $ids ) ? $ids : [] ) ) );
+
+	if ( strlen( $digits ) >= 2 ) {
+		$ids = hovalvakil_lawyer_filter_ids_license_digits( $ids, $digits, $prefix_only );
+	}
+
+	return $ids;
+}
+
+/**
+ * Post IDs matching license / file number meta (formatted or digit-only).
+ *
+ * @param array<string, mixed> $filtered_base Base query args.
+ * @param string               $q             Search string.
+ * @return int[]
+ */
+function hovalvakil_lawyer_strong_search_license_ids( array $filtered_base, $q ) {
+	$q = trim( (string) $q );
+	if ( '' === $q ) {
+		return [];
+	}
+
+	$digits = hovalvakil_lawyer_search_digits_key( $q );
+	if ( strlen( $digits ) < 2 ) {
+		return [];
+	}
+
+	$has_extra_filters = ! empty( $filtered_base['tax_query'] ) || ! empty( $filtered_base['meta_query'] );
+	if ( ! $has_extra_filters ) {
+		return hovalvakil_lawyer_license_search_post_ids_direct( $q, 200 );
+	}
+
+	$args = $filtered_base;
+	unset( $args['post__in'], $args['orderby'], $args['s'] );
+
+	$GLOBALS['hovalvakil_lawyer_license_search_raw']    = $q;
+	$GLOBALS['hovalvakil_lawyer_license_search_digits'] = $digits;
+	add_filter( 'posts_where', 'hovalvakil_lawyer_posts_where_license_meta_search', 10, 2 );
+	$ids = hovalvakil_lawyer_collect_post_ids_batched( $args );
+	remove_filter( 'posts_where', 'hovalvakil_lawyer_posts_where_license_meta_search', 10 );
+	unset( $GLOBALS['hovalvakil_lawyer_license_search_raw'], $GLOBALS['hovalvakil_lawyer_license_search_digits'] );
+
+	return $ids;
+}
+
+/**
+ * Collect term slugs whose name contains $q (case-insensitive, multibyte; also compact/no-space).
  *
  * @param string $taxonomy Taxonomy.
  * @param string $q      Needle.
@@ -194,13 +629,97 @@ function hovalvakil_lawyer_term_slugs_matching_query( $taxonomy, $q ) {
 	if ( '' === $q ) {
 		return [];
 	}
-	$slugs = [];
+	$q_compact = hovalvakil_lawyer_search_compact_key( $q );
+	$slugs     = [];
 	foreach ( hovalvakil_lawyer_cached_term_name_rows( $taxonomy ) as $row ) {
-		if ( false !== mb_stripos( $row['name'], $q ) ) {
+		$name = (string) ( $row['name'] ?? '' );
+		if ( false !== mb_stripos( $name, $q ) ) {
 			$slugs[] = $row['slug'];
+			continue;
+		}
+		if ( '' !== $q_compact && strlen( $q_compact ) >= 2 ) {
+			$name_compact = hovalvakil_lawyer_search_compact_key( $name );
+			if ( '' !== $name_compact && false !== mb_stripos( $name_compact, $q_compact ) ) {
+				$slugs[] = $row['slug'];
+			}
 		}
 	}
 	return array_values( array_unique( $slugs ) );
+}
+
+/**
+ * Post IDs matching office address / license meta under base filters.
+ *
+ * @param array<string, mixed> $filtered_base Base query args.
+ * @param string               $q             Search string.
+ * @return int[]
+ */
+function hovalvakil_lawyer_strong_search_meta_ids( array $filtered_base, $q ) {
+	$q = trim( (string) $q );
+	if ( '' === $q ) {
+		return [];
+	}
+
+	$clauses = [
+		[
+			'key'     => 'hvl_office_address',
+			'value'   => $q,
+			'compare' => 'LIKE',
+		],
+	];
+
+	if ( count( $clauses ) < 1 ) {
+		return [];
+	}
+
+	$meta_args = $filtered_base;
+	unset( $meta_args['post__in'], $meta_args['orderby'], $meta_args['s'] );
+
+	$existing_mq = ! empty( $meta_args['meta_query'] ) && is_array( $meta_args['meta_query'] )
+		? $meta_args['meta_query']
+		: null;
+
+	$search_mq = $clauses;
+	if ( count( $search_mq ) > 1 ) {
+		$search_mq = array_merge( [ 'relation' => 'OR' ], $search_mq );
+	}
+
+	if ( $existing_mq ) {
+		$meta_args['meta_query'] = [
+			'relation' => 'AND',
+			$existing_mq,
+			$search_mq,
+		];
+	} else {
+		$meta_args['meta_query'] = $search_mq;
+	}
+
+	return hovalvakil_lawyer_collect_post_ids_batched( $meta_args );
+}
+
+/**
+ * Post IDs whose title matches compact query (no spaces / half-space).
+ *
+ * @param array<string, mixed> $filtered_base Base query args.
+ * @param string               $q             Search string.
+ * @return int[]
+ */
+function hovalvakil_lawyer_strong_search_compact_title_ids( array $filtered_base, $q ) {
+	$compact = hovalvakil_lawyer_search_compact_key( $q );
+	if ( strlen( $compact ) < 2 ) {
+		return [];
+	}
+
+	$args = $filtered_base;
+	unset( $args['post__in'], $args['orderby'], $args['s'] );
+
+	$GLOBALS['hovalvakil_lawyer_compact_search_needle'] = $compact;
+	add_filter( 'posts_where', 'hovalvakil_lawyer_posts_where_compact_title_search', 10, 2 );
+	$ids = hovalvakil_lawyer_collect_post_ids_batched( $args );
+	remove_filter( 'posts_where', 'hovalvakil_lawyer_posts_where_compact_title_search', 10 );
+	unset( $GLOBALS['hovalvakil_lawyer_compact_search_needle'] );
+
+	return $ids;
 }
 
 /**
@@ -246,6 +765,175 @@ function hovalvakil_lawyer_build_tax_query( $city, array $city_term_slugs, array
 	}
 
 	return $tax_query;
+}
+
+/**
+ * Resolve province keys (slug, route slug tehran, name) to WP_Term objects.
+ *
+ * @param string[] $province_keys Slugs, route slugs, or names.
+ * @return WP_Term[]
+ */
+function hovalvakil_lawyer_resolve_province_terms( array $province_keys ): array {
+	$terms  = [];
+	$seen   = [];
+	foreach ( $province_keys as $raw ) {
+		$raw = trim( (string) $raw );
+		if ( '' === $raw ) {
+			continue;
+		}
+		$term = null;
+		if ( function_exists( 'hovalvakil_term_resolve_province_by_route' ) ) {
+			$term = hovalvakil_term_resolve_province_by_route( $raw );
+		}
+		if ( ! $term instanceof WP_Term && function_exists( 'hovalvakil_term_resolve_by_route' ) ) {
+			$term = hovalvakil_term_resolve_by_route( $raw, 'hvl_province' );
+		}
+		if ( ! $term instanceof WP_Term && function_exists( 'hovalvakil_lawyer_archive_resolve_term' ) ) {
+			$term = hovalvakil_lawyer_archive_resolve_term( $raw, 'hvl_province' );
+		}
+		if ( ! $term instanceof WP_Term ) {
+			$term = get_term_by( 'slug', $raw, 'hvl_province' );
+		}
+		if ( ! $term instanceof WP_Term ) {
+			$term = get_term_by( 'name', $raw, 'hvl_province' );
+		}
+		if ( $term instanceof WP_Term && ! isset( $seen[ (int) $term->term_id ] ) ) {
+			$seen[ (int) $term->term_id ] = true;
+			$terms[]                      = $term;
+		}
+	}
+	return $terms;
+}
+
+/**
+ * Tax filter for province archive: match hvl_province term_id OR cities linked to that province.
+ *
+ * @param string[] $province_slugs Province slugs, route slugs, or names.
+ * @return array<int|string, mixed>|null Single tax_query clause or null.
+ */
+function hovalvakil_lawyer_build_province_filter_tax_query( array $province_slugs ) {
+	$terms = hovalvakil_lawyer_resolve_province_terms( $province_slugs );
+	if ( empty( $terms ) ) {
+		return null;
+	}
+
+	$term_ids = array_map( static fn( $t ) => (int) $t->term_id, $terms );
+
+	// Province term only; city-in-province is handled in posts_where via hvl_province_id meta (Tehran-safe).
+	return [
+		'taxonomy'         => 'hvl_province',
+		'field'            => 'term_id',
+		'terms'            => $term_ids,
+		'include_children' => false,
+	];
+}
+
+/**
+ * SQL WHERE fragment: lawyer has province term and/or city in province.
+ *
+ * @param array{province_ids?:int[],city_ids?:int[]} $ctx Filter context.
+ * @return string Empty or AND (...).
+ */
+function hovalvakil_lawyer_province_filter_sql_where( array $ctx ): string {
+	global $wpdb;
+
+	$province_ids = ! empty( $ctx['province_ids'] ) ? array_values( array_map( 'intval', $ctx['province_ids'] ) ) : [];
+	$province_ids = array_values( array_filter( $province_ids ) );
+	if ( empty( $province_ids ) ) {
+		return '';
+	}
+
+	$ors      = [];
+	$meta_key = defined( 'HOVALVAKIL_CITY_PROVINCE_META' ) ? HOVALVAKIL_CITY_PROVINCE_META : 'hvl_province_id';
+
+	foreach ( $province_ids as $province_id ) {
+		$province_id = (int) $province_id;
+		$ors[]       = $wpdb->prepare(
+			"EXISTS (
+				SELECT 1 FROM {$wpdb->term_relationships} tr
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				WHERE tr.object_id = {$wpdb->posts}.ID
+				AND tt.taxonomy = 'hvl_province'
+				AND tt.term_id = %d
+			)",
+			$province_id
+		);
+		// Cities explicitly linked to this province (avoids huge IN lists that break Tehran).
+		$ors[] = $wpdb->prepare(
+			"EXISTS (
+				SELECT 1 FROM {$wpdb->term_relationships} tr
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = 'hvl_city'
+				INNER JOIN {$wpdb->termmeta} tm ON tm.term_id = tt.term_id AND tm.meta_key = %s AND CAST(tm.meta_value AS UNSIGNED) = %d
+				WHERE tr.object_id = {$wpdb->posts}.ID
+			)",
+			$meta_key,
+			$province_id
+		);
+	}
+
+	return ' AND (' . implode( ' OR ', $ors ) . ')';
+}
+
+/**
+ * @param string[]|int[] $province_keys Slugs, route slugs, names, or term IDs.
+ * @return array{province_ids:int[],city_ids:int[]}|null
+ */
+function hovalvakil_lawyer_province_filter_context( array $province_keys ): ?array {
+	$terms = hovalvakil_lawyer_resolve_province_terms( $province_keys );
+	if ( empty( $terms ) ) {
+		return null;
+	}
+
+	return [
+		'province_ids' => array_values( array_map( static fn( $t ) => (int) $t->term_id, $terms ) ),
+	];
+}
+
+/**
+ * Enable province SQL filter for the next hvl_lawyer WP_Query (archive / REST).
+ *
+ * @param string[]|int[] $province_keys Province slugs or IDs.
+ * @return bool
+ */
+function hovalvakil_lawyer_enable_province_filter( array $province_keys ): bool {
+	$ctx = hovalvakil_lawyer_province_filter_context( $province_keys );
+	if ( null === $ctx ) {
+		return false;
+	}
+	$GLOBALS['hovalvakil_lawyer_province_filter_ctx'] = $ctx;
+	add_filter( 'posts_where', 'hovalvakil_lawyer_posts_where_province_filter', 10, 2 );
+	return true;
+}
+
+/**
+ * @return void
+ */
+function hovalvakil_lawyer_disable_province_filter(): void {
+	unset( $GLOBALS['hovalvakil_lawyer_province_filter_ctx'] );
+	remove_filter( 'posts_where', 'hovalvakil_lawyer_posts_where_province_filter', 10 );
+}
+
+/**
+ * @param string   $where   WHERE clause.
+ * @param WP_Query $query   Query.
+ * @return string
+ */
+function hovalvakil_lawyer_posts_where_province_filter( $where, $query ) {
+	if ( empty( $GLOBALS['hovalvakil_lawyer_province_filter_ctx'] ) || ! is_array( $GLOBALS['hovalvakil_lawyer_province_filter_ctx'] ) ) {
+		return $where;
+	}
+	if ( ! $query instanceof WP_Query ) {
+		return $where;
+	}
+	$pt = $query->get( 'post_type' );
+	if ( 'hvl_lawyer' !== $pt && ( ! is_array( $pt ) || ! in_array( 'hvl_lawyer', $pt, true ) ) ) {
+		return $where;
+	}
+	$sql = hovalvakil_lawyer_province_filter_sql_where( $GLOBALS['hovalvakil_lawyer_province_filter_ctx'] );
+	if ( '' !== $sql ) {
+		$where .= $sql;
+	}
+	return $where;
 }
 
 /**
@@ -314,12 +1002,22 @@ function hovalvakil_lawyer_collect_post_ids_batched( array $args ) {
  * @return int[]
  */
 function hovalvakil_lawyer_strong_search_all_ids( array $filtered_base, $q ) {
-	$q = (string) $q;
-	if ( '' === $q ) {
+	$q = trim( (string) $q );
+	if ( '' === $q || ! hovalvakil_lawyer_search_query_is_usable( $q ) ) {
 		return [];
 	}
 
+	// License-only query (e.g. ۹۹۹۷۸): fast path — avoid scanning all lawyers.
+	if ( hovalvakil_lawyer_search_is_digit_primary( $q ) ) {
+		$license_ids = hovalvakil_lawyer_strong_search_license_ids( $filtered_base, $q );
+		if ( function_exists( 'hovalvakil_lawyer_sort_ids_image_first' ) ) {
+			return hovalvakil_lawyer_sort_ids_image_first( $license_ids );
+		}
+		return $license_ids;
+	}
+
 	$matched_city_slugs      = hovalvakil_lawyer_term_slugs_matching_query( 'hvl_city', $q );
+	$matched_province_slugs  = hovalvakil_lawyer_term_slugs_matching_query( 'hvl_province', $q );
 	$matched_specialty_slugs = hovalvakil_lawyer_term_slugs_matching_query( 'hvl_specialty', $q );
 
 	$text_args = $filtered_base;
@@ -327,8 +1025,12 @@ function hovalvakil_lawyer_strong_search_all_ids( array $filtered_base, $q ) {
 	unset( $text_args['post__in'], $text_args['orderby'] );
 	$text_ids = hovalvakil_lawyer_collect_post_ids_batched( $text_args );
 
+	$compact_title_ids = hovalvakil_lawyer_strong_search_compact_title_ids( $filtered_base, $q );
+	$license_ids       = hovalvakil_lawyer_strong_search_license_ids( $filtered_base, $q );
+	$meta_ids          = hovalvakil_lawyer_strong_search_meta_ids( $filtered_base, $q );
+
 	$tax_match_ids = [];
-	if ( ! empty( $matched_city_slugs ) || ! empty( $matched_specialty_slugs ) ) {
+	if ( ! empty( $matched_city_slugs ) || ! empty( $matched_province_slugs ) || ! empty( $matched_specialty_slugs ) ) {
 		$tax_match_args = $filtered_base;
 		unset( $tax_match_args['post__in'], $tax_match_args['orderby'], $tax_match_args['s'] );
 
@@ -338,6 +1040,13 @@ function hovalvakil_lawyer_strong_search_all_ids( array $filtered_base, $q ) {
 				'taxonomy' => 'hvl_city',
 				'field'    => 'slug',
 				'terms'    => $matched_city_slugs,
+			];
+		}
+		if ( ! empty( $matched_province_slugs ) ) {
+			$q_tax[] = [
+				'taxonomy' => 'hvl_province',
+				'field'    => 'slug',
+				'terms'    => $matched_province_slugs,
 			];
 		}
 		if ( ! empty( $matched_specialty_slugs ) ) {
@@ -364,7 +1073,11 @@ function hovalvakil_lawyer_strong_search_all_ids( array $filtered_base, $q ) {
 		$tax_match_ids = hovalvakil_lawyer_collect_post_ids_batched( $tax_match_args );
 	}
 
-	$merged = array_values( array_unique( array_merge( $text_ids, $tax_match_ids ) ) );
+	$merged = array_values(
+		array_unique(
+			array_merge( $text_ids, $compact_title_ids, $license_ids, $meta_ids, $tax_match_ids )
+		)
+	);
 	if ( function_exists( 'hovalvakil_lawyer_sort_ids_image_first' ) ) {
 		return hovalvakil_lawyer_sort_ids_image_first( $merged );
 	}
@@ -403,7 +1116,10 @@ function hovalvakil_lawyer_get_list_wp_query( array $params ) {
 	];
 	$params = wp_parse_args( $params, $defaults );
 
-	$q              = (string) $params['q'];
+	$q              = trim( (string) $params['q'] );
+	if ( '' !== $q && function_exists( 'hovalvakil_lawyer_search_query_is_usable' ) && ! hovalvakil_lawyer_search_query_is_usable( $q ) ) {
+		$q = '';
+	}
 	$city           = (string) $params['city'];
 	$city_slugs     = is_array( $params['city_term_slugs'] ) ? $params['city_term_slugs'] : [];
 	$specialty_slugs = is_array( $params['specialty_slugs'] ) ? $params['specialty_slugs'] : [];

@@ -77,19 +77,29 @@ $desktop_links = array_values(
 $desktop_provinces = get_terms(
 	[
 		'taxonomy'   => 'hvl_province',
-		'hide_empty' => true,
+		'hide_empty' => false,
 		'orderby'    => 'name',
 		'order'      => 'ASC',
-		'number'     => 12,
 	]
 );
 if ( is_wp_error( $desktop_provinces ) ) {
 	$desktop_provinces = [];
 }
 
-/** شهرهای هر استان از روی هم‌آیی واقعی روی پست وکیل (همان منطق catalogue). */
+/** شهرهای هر استان از روی لینک شهر→استان (term meta). */
 $hvl_mega_cities_by_province = [];
-if ( function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' ) ) {
+if ( function_exists( 'hovalvakil_get_cities_grouped_by_province' ) ) {
+	$hvl_mega_cities_by_province = hovalvakil_get_cities_grouped_by_province();
+}
+$hvl_mega_has_linked_cities = false;
+foreach ( $hvl_mega_cities_by_province as $rows_check ) {
+	if ( ! empty( $rows_check ) ) {
+		$hvl_mega_has_linked_cities = true;
+		break;
+	}
+}
+if ( ! $hvl_mega_has_linked_cities && function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' ) ) {
+	$hvl_mega_cities_by_province = [];
 	foreach ( hovalvakil_home_city_province_pairs_for_lawyers() as $pair ) {
 		$p = $pair['province'];
 		$c = $pair['city'];
@@ -110,7 +120,9 @@ if ( function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' ) ) {
 		$hvl_mega_cities_by_province[ $pslug ][ '_' . $cid ] = [
 			'n' => (string) $c->name,
 			's' => (string) $c->slug,
-			'u' => add_query_arg( 'city_term[]', $c->slug, get_post_type_archive_link( 'hvl_lawyer' ) ),
+			'u' => function_exists( 'hovalvakil_lawyer_archive_city_url' )
+				? hovalvakil_lawyer_archive_city_url( (string) $c->slug )
+				: add_query_arg( 'city_term[]', $c->slug, get_post_type_archive_link( 'hvl_lawyer' ) ),
 		];
 	}
 }
@@ -142,20 +154,17 @@ $hvl_initial_cities = ( '' !== $hvl_first_province_slug && isset( $hvl_mega_citi
 	? $hvl_mega_cities_by_province[ $hvl_first_province_slug ]
 	: [];
 
-$desktop_grade_links = [
-	[
-		'label' => 'وکیل پایه یک',
-		'url'   => add_query_arg( 'grade', 'p1', get_post_type_archive_link( 'hvl_lawyer' ) ),
-	],
-	[
-		'label' => 'وکیل پایه دو',
-		'url'   => add_query_arg( 'grade', 'p2', get_post_type_archive_link( 'hvl_lawyer' ) ),
-	],
-	[
-		'label' => 'کارآموز وکالت',
-		'url'   => add_query_arg( 'grade', 'karamooz', get_post_type_archive_link( 'hvl_lawyer' ) ),
-	],
-];
+$desktop_grade_links = [];
+if ( function_exists( 'hovalvakil_lawyer_archive_grade_map' ) ) {
+	foreach ( hovalvakil_lawyer_archive_grade_map() as $grade_slug => $grade_data ) {
+		$desktop_grade_links[] = [
+			'label' => (string) ( $grade_data['label'] ?? '' ),
+			'url'   => function_exists( 'hovalvakil_lawyer_archive_grade_url' )
+				? hovalvakil_lawyer_archive_grade_url( (string) $grade_slug )
+				: add_query_arg( 'grade', $grade_slug, get_post_type_archive_link( 'hvl_lawyer' ) ),
+		];
+	}
+}
 
 $hvl_lawyer_archive_url = get_post_type_archive_link( 'hvl_lawyer' );
 $hvl_search_img_fallback  = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
@@ -201,7 +210,9 @@ $hvl_lawyers_rest_url     = rest_url( 'hovalvakil/v1/lawyers' );
 								<?php foreach ( $desktop_provinces as $idx => $term ) : ?>
 									<?php
 									$pactive = ( 0 === (int) $idx ) ? ' is-active' : '';
-									$phref   = add_query_arg( 'province_term[]', $term->slug, get_post_type_archive_link( 'hvl_lawyer' ) );
+									$phref   = function_exists( 'hovalvakil_lawyer_archive_province_url' )
+										? hovalvakil_lawyer_archive_province_url( (string) $term->slug )
+										: add_query_arg( 'province_term[]', $term->slug, get_post_type_archive_link( 'hvl_lawyer' ) );
 									?>
 									<a
 										class="<?php echo esc_attr( 'hvl-header-mega-prov-link' . $pactive ); ?>"
@@ -830,7 +841,8 @@ $hvl_lawyers_rest_url     = rest_url( 'hovalvakil/v1/lawyers' );
 				}
 				renderHint('');
 
-				const params = new URLSearchParams({ q: qRaw, per_page: String(FETCH_N), page: '1' });
+				// home=1 → fast single-SQL search path (title + license, no province restriction when q is non-empty)
+				const params = new URLSearchParams({ q: qRaw, per_page: String(FETCH_N), page: '1', home: '1' });
 				const cacheKey = params.toString();
 				if (cache.has(cacheKey)) {
 					renderResults(cache.get(cacheKey), qRaw);

@@ -25,23 +25,25 @@ function hovalvakil_static_pages_map() {
  *
  * @return string
  */
-function hovalvakil_current_request_slug() {
-	$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '/';
-	$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
-	$home_path   = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+if ( ! function_exists( 'hovalvakil_current_request_slug' ) ) {
+	function hovalvakil_current_request_slug() {
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '/';
+		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
+		$home_path   = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH );
 
-	$path      = '/' . ltrim( $path, '/' );
-	$home_path = '/' . trim( $home_path, '/' );
+		$path      = '/' . ltrim( $path, '/' );
+		$home_path = '/' . trim( $home_path, '/' );
 
-	if ( '/' === $home_path ) {
-		$home_path = '';
+		if ( '/' === $home_path ) {
+			$home_path = '';
+		}
+
+		if ( '' !== $home_path && 0 === strpos( $path, $home_path ) ) {
+			$path = substr( $path, strlen( $home_path ) );
+		}
+
+		return trim( $path, '/' );
 	}
-
-	if ( '' !== $home_path && 0 === strpos( $path, $home_path ) ) {
-		$path = substr( $path, strlen( $home_path ) );
-	}
-
-	return trim( $path, '/' );
 }
 
 /**

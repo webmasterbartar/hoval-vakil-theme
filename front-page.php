@@ -51,11 +51,6 @@ $home_grade_cards = [
 		'icon'  => 'military_tech',
 	],
 	[
-		'slug'  => 'p2',
-		'label' => __( 'وکیل پایه دو', 'hello-elementor' ),
-		'icon'  => 'workspace_premium',
-	],
-	[
 		'slug'  => 'karamooz',
 		'label' => __( 'کارآموز وکالت', 'hello-elementor' ),
 		'icon'  => 'school',
@@ -118,18 +113,27 @@ if ( is_array( $home_prov_count_sql ) ) {
 		}
 	);
 }
-$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = true;
-$initial_query                                       = new WP_Query(
-	[
-		'post_type'              => 'hvl_lawyer',
-		'post_status'            => 'publish',
-		'posts_per_page'         => 20,
-		'no_found_rows'          => false,
-		'update_post_meta_cache' => true,
-		'update_post_term_cache' => true,
-	]
-);
-unset( $GLOBALS['hovalvakil_lawyer_query_order_image_first'] );
+$initial_query = function_exists( 'hovalvakil_home_grid_query' )
+	? hovalvakil_home_grid_query(
+		[
+			'paged'            => 1,
+			'posts_per_page'   => 20,
+			'grade_slugs'      => [],
+		]
+	)
+	: new WP_Query(
+		[
+			'post_type'              => 'hvl_lawyer',
+			'post_status'            => 'publish',
+			'posts_per_page'         => 20,
+			'no_found_rows'          => false,
+			'update_post_meta_cache' => true,
+			'update_post_term_cache' => true,
+		]
+	);
+$home_province_slug = function_exists( 'hovalvakil_home_grid_primary_province_slug' )
+	? hovalvakil_home_grid_primary_province_slug()
+	: 'tehran';
 $initial_total_pages = max( 1, (int) $initial_query->max_num_pages );
 get_header();
 ?>
@@ -143,8 +147,7 @@ get_header();
 					<div id="home-search-trigger" class="search-icon-right search-icon-variant">
 						<span class="material-symbols-outlined">search</span>
 					</div>
-					<input id="home-search-input" class="search-input" placeholder="نام وکیل، تخصص، خدمت..." type="text" />
-					<div id="home-live-results" class="home-live-results" hidden></div>
+					<input id="home-search-input" class="search-input" placeholder="نام وکیل، شماره پروانه، تخصص، شهر..." type="text" autocomplete="off" />
 				</div>
 			</div>
 		</div>
@@ -233,7 +236,9 @@ get_header();
 					$grade_slug  = $grade_card['slug'];
 					$grade_icon  = $grade_card['icon'];
 					$grade_count = (int) ( $home_grade_counts[ $grade_slug ] ?? 0 );
-					$grade_link  = add_query_arg( 'grade', $grade_slug, $archive_url );
+					$grade_link  = function_exists( 'hovalvakil_lawyer_archive_grade_url' )
+						? hovalvakil_lawyer_archive_grade_url( $grade_slug )
+						: add_query_arg( 'grade', $grade_slug, $archive_url );
 					?>
 					<a class="category-card ghost-border" href="<?php echo esc_url( $grade_link ); ?>">
 						<div class="category-icon-wrapper">
@@ -265,12 +270,9 @@ get_header();
 						if ( ! $province_term instanceof WP_Term ) {
 							continue;
 						}
-						$prov_href = add_query_arg(
-							[
-								'province_term[]' => $province_term->slug,
-							],
-							$archive_url
-						);
+						$prov_href = function_exists( 'hovalvakil_lawyer_archive_province_url' )
+							? hovalvakil_lawyer_archive_province_url( (string) $province_term->slug )
+							: add_query_arg( [ 'province_term[]' => $province_term->slug ], $archive_url );
 						?>
 						<a class="city-card" href="<?php echo esc_url( $prov_href ); ?>">
 							<div class="city-card-header">
@@ -294,7 +296,21 @@ get_header();
 
 	<script>
 		const apiBase = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/lawyers' ) ) ); ?>;
+		const homeGridProvince = <?php echo wp_json_encode( $home_province_slug, JSON_UNESCAPED_UNICODE ); ?>;
 		const archiveUrl = <?php echo wp_json_encode( esc_url_raw( $archive_url ) ); ?>;
+		const archiveGradeUrls = <?php
+		$grade_url_map = [];
+		foreach ( $home_grade_cards as $gc ) {
+			$gs = (string) ( $gc['slug'] ?? '' );
+			if ( '' === $gs ) {
+				continue;
+			}
+			$grade_url_map[ $gs ] = function_exists( 'hovalvakil_lawyer_archive_grade_url' )
+				? hovalvakil_lawyer_archive_grade_url( $gs )
+				: add_query_arg( 'grade', $gs, $archive_url );
+		}
+		echo wp_json_encode( $grade_url_map, JSON_UNESCAPED_UNICODE );
+		?>;
 		const homeGradeSlugs = <?php echo wp_json_encode( array_column( $home_grade_cards, 'slug' ), JSON_UNESCAPED_UNICODE ); ?>;
 		const fallbackImage = <?php echo wp_json_encode( esc_url_raw( $profile_fallback_image ) ); ?>;
 		const initialTotalPages = <?php echo (int) $initial_total_pages; ?>;
@@ -304,16 +320,15 @@ get_header();
 		const triggerBtn = document.getElementById('home-search-trigger');
 		const loadMoreBtn = document.getElementById('home-load-more-btn');
 		const gradeFilterWrap = document.getElementById('home-grade-filters');
-		const liveResultsEl = document.getElementById('home-live-results');
 
 		const GRID_PER_PAGE = 20;
 		let currentPage = 1;
 		let totalPages = initialTotalPages;
 		let selectedGrade = '';
-		let liveTimer = null;
-		let liveAbortController = null;
-		const liveSearchCache = new Map();
-		let gridTimer = null;
+		let searchDebounceTimer = null;
+		let searchAbortController = null;
+		let searchRequestToken = 0;
+		const searchCache = new Map();
 		let gridAbortController = null;
 		const gridCache = new Map();
 		let gridRequestToken = 0;
@@ -402,14 +417,169 @@ get_header();
 			gridEl.insertAdjacentHTML('beforeend', html);
 		}
 
+		function digitsKey(value) {
+			return (value || '')
+				.toString()
+				.replace(/[۰-۹٠-٩]/g, (ch) => {
+					const map = { '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9', '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+					return map[ch] ?? ch;
+				})
+				.replace(/\D/g, '');
+		}
+
+		function searchQueryUsable(raw) {
+			const q = (raw || '').trim();
+			if (!q) return false;
+			const d = digitsKey(q);
+			const rest = q.replace(/[0-9۰-۹٠-٩\s/\-.,،‌_]/g, '');
+			// License number: from 2 digits (102, 102142, …).
+			if (rest.length === 0 && d.length > 0) {
+				return d.length >= 2;
+			}
+			return q.length >= 2 || d.length >= 2;
+		}
+
+		function isDigitPrimaryQuery(raw) {
+			const q = (raw || '').trim();
+			if (!q) return false;
+			const d = digitsKey(q);
+			if (d.length < 2) return false;
+			const rest = q.replace(/[0-9۰-۹٠-٩\s/\-.,،‌_]/g, '');
+			return rest.length === 0;
+		}
+
+		function searchDebounceMs(raw) {
+			return isDigitPrimaryQuery(raw) ? 280 : 160;
+		}
+
+		function appendHomeGridParams(params, opts) {
+			params.set('home', '1');
+			const searching = !!(opts && opts.searching);
+			if (!searching && homeGridProvince) {
+				params.set('province_term', homeGridProvince);
+			}
+		}
+
+		function filterItemsForQuery(items, qTrim) {
+			const list = Array.isArray(items) ? items : [];
+			if (!isDigitPrimaryQuery(qTrim)) {
+				return list;
+			}
+			const needle = digitsKey(qTrim);
+			if (needle.length < 2) {
+				return [];
+			}
+			return list.filter((item) => {
+				const lic = digitsKey(
+					[item?.license_no_raw, item?.license_no, item?.card_license_line].filter(Boolean).join(' ')
+				);
+				return lic.startsWith(needle);
+			});
+		}
+
+		async function runHomeSearch() {
+			const qTrim = queryInput?.value?.trim() || '';
+			if (!searchQueryUsable(qTrim)) {
+				await fetchLawyers({ page: 1, append: false, skeleton: true });
+				return;
+			}
+
+			const params = new URLSearchParams({
+				q: qTrim,
+				per_page: String(GRID_PER_PAGE),
+				page: '1',
+			});
+			appendHomeGridParams(params, { searching: true });
+			if (selectedGrade && homeGradeSlugs.includes(selectedGrade)) {
+				params.set('grade', selectedGrade);
+			}
+			const cacheKey = params.toString();
+
+			if (searchCache.has(cacheKey)) {
+				const cached = searchCache.get(cacheKey);
+				const items = filterItemsForQuery(cached.items, qTrim);
+				renderCards(items, false);
+				totalPages = Number(cached.totalPages || 1);
+				currentPage = 1;
+				loadMoreBtn.style.display = currentPage < totalPages ? 'inline-flex' : 'none';
+				return;
+			}
+
+			const token = ++searchRequestToken;
+			if (searchAbortController) {
+				searchAbortController.abort();
+			}
+			searchAbortController = new AbortController();
+
+			gridEl.setAttribute('aria-busy', 'true');
+			gridEl.classList.add('is-loading');
+			showGridSkeleton(GRID_PER_PAGE);
+			loadMoreBtn.disabled = true;
+
+			try {
+				const res = await fetch(`${apiBase}?${params.toString()}`, {
+					credentials: 'same-origin',
+					signal: searchAbortController.signal,
+				});
+				if (!res.ok) {
+					throw new Error('search_request_failed');
+				}
+				const data = await res.json();
+				if (token !== searchRequestToken) {
+					return;
+				}
+				searchCache.set(cacheKey, data);
+				if (searchCache.size > 40) {
+					searchCache.delete(searchCache.keys().next().value);
+				}
+				gridCache.set(cacheKey, data);
+				totalPages = Number(data.totalPages || 1);
+				currentPage = Number(data.page || 1);
+				let items = filterItemsForQuery(data.items, qTrim);
+				if (isDigitPrimaryQuery(qTrim) && !items.length) {
+					data.total = 0;
+					data.totalPages = 0;
+				}
+				renderCards(items, false);
+				loadMoreBtn.style.display = currentPage < totalPages ? 'inline-flex' : 'none';
+			} catch (e) {
+				if (e && e.name === 'AbortError') {
+					return;
+				}
+				if (token !== searchRequestToken) {
+					return;
+				}
+				gridEl.innerHTML = '<p class="text-on-surface-variant">خطا در جستجو. دوباره تلاش کنید.</p>';
+				loadMoreBtn.style.display = 'none';
+			} finally {
+				if (token === searchRequestToken) {
+					gridEl.classList.remove('is-loading');
+					gridEl.removeAttribute('aria-busy');
+					loadMoreBtn.disabled = false;
+				}
+			}
+		}
+
+		function scheduleHomeSearch() {
+			if (searchDebounceTimer) {
+				clearTimeout(searchDebounceTimer);
+			}
+			const qTrim = queryInput?.value?.trim() || '';
+			const delay = searchDebounceMs(qTrim);
+			searchDebounceTimer = setTimeout(() => {
+				searchDebounceTimer = null;
+				runHomeSearch();
+			}, delay);
+		}
+
 		async function fetchLawyers({ page = 1, append = false, skeleton = true } = {}) {
 			const qTrim = queryInput?.value?.trim() || '';
-			// Match archive REST: sending short q triggers strong-search branch → often zero items with tax filters.
-			const q = qTrim.length >= 2 ? qTrim : '';
+			const q = searchQueryUsable(qTrim) ? qTrim : '';
 			const params = new URLSearchParams({
 				page: String(page),
 				per_page: String(GRID_PER_PAGE),
 			});
+			appendHomeGridParams(params, { searching: !!q });
 			if (selectedGrade && homeGradeSlugs.includes(selectedGrade)) params.set('grade', selectedGrade);
 			if (q) params.set('q', q);
 			const cacheKey = params.toString();
@@ -479,169 +649,55 @@ get_header();
 
 		function goToArchive() {
 			const qTrim = queryInput?.value?.trim() || '';
+			if ( !qTrim && selectedGrade && archiveGradeUrls[selectedGrade] ) {
+				window.location.href = archiveGradeUrls[selectedGrade];
+				return;
+			}
 			const params = new URLSearchParams();
-			if (qTrim.length >= 2) params.set('q', qTrim);
+			if (searchQueryUsable(qTrim)) params.set('q', qTrim);
+			if (selectedGrade && homeGradeSlugs.includes(selectedGrade)) params.set('grade', selectedGrade);
 			window.location.href = params.toString() ? `${archiveUrl}?${params.toString()}` : archiveUrl;
 		}
 
-		function archiveUrlWithFilters() {
+		triggerBtn?.addEventListener('click', () => {
 			const qTrim = queryInput?.value?.trim() || '';
-			const params = new URLSearchParams();
-			if (qTrim.length >= 2) params.set('q', qTrim);
-			return params.toString() ? `${archiveUrl}?${params.toString()}` : archiveUrl;
-		}
-
-		function hideLiveResults() {
-			if (!liveResultsEl) return;
-			liveResultsEl.hidden = true;
-			liveResultsEl.innerHTML = '';
-		}
-
-		function renderLiveLoading() {
-			if (!liveResultsEl) return;
-			liveResultsEl.innerHTML = '<div class="home-live-empty">در حال جستجو...</div>';
-			liveResultsEl.hidden = false;
-		}
-
-		function normalizeFaText(value) {
-			return (value || '')
-				.toString()
-				.toLowerCase()
-				.replaceAll('ي', 'ی')
-				.replaceAll('ك', 'ک')
-				.replaceAll('ة', 'ه')
-				.replace(/\s+/g, ' ')
-				.trim();
-		}
-
-		function scoreLiveItem(item, query) {
-			const q = normalizeFaText(query);
-			if (!q) return 0;
-			const name = normalizeFaText(item?.name || '');
-			const specialty = normalizeFaText(
-				(Array.isArray(item?.specialties) && item.specialties.length ? item.specialties.join(' ') : '') || item?.specialty || ''
-			);
-			const city = normalizeFaText(
-				(item?.location_line || item?.city || '').toString()
-			);
-			let score = 0;
-			if (name === q) score += 1000;
-			else if (name.startsWith(q)) score += 700;
-			else if (name.includes(q)) score += 450;
-			if (specialty === q) score += 500;
-			else if (specialty.includes(q)) score += 280;
-			if (city === q) score += 420;
-			else if (city.includes(q)) score += 240;
-			return score;
-		}
-
-		function renderLiveResults(items, total) {
-			if (!liveResultsEl) return;
-			if (!items.length) {
-				liveResultsEl.innerHTML = '<div class="home-live-empty">موردی پیدا نشد.</div>';
-				liveResultsEl.hidden = false;
+			if (searchQueryUsable(qTrim)) {
+				runHomeSearch();
 				return;
 			}
-
-			const rows = items.map((item) => {
-				const spec0 = (Array.isArray(item.specialties) && item.specialties.length
-					? item.specialties[0]
-					: '') || (item.specialty || '');
-				const loc = cardLocationText(item);
-				const lic = (item.card_license_line || '').toString().trim();
-				const bits = [ spec0, loc, lic ].filter((x) => String(x).trim());
-				const metaLine = bits.join(' · ');
-				const metaHtml = metaLine
-					? `<div class="home-live-item-meta">${escapeHtml(metaLine)}</div>`
-					: '';
-				return `
-				<a class="home-live-item" href="${escapeHtml(item.permalink || '#')}">
-					<img class="home-live-item-image" src="${escapeHtml(item.image || fallbackImage)}" alt="${escapeHtml(item.name || '')}"${hvlLawyerImageOnerrorAttr()} />
-					<div class="home-live-item-content">
-						<div class="home-live-item-title">${escapeHtml(item.name || '')}</div>
-						${metaHtml}
-					</div>
-				</a>`;
-			}).join('');
-
-			const footer = `
-				<a class="home-live-all" href="${escapeHtml(archiveUrlWithFilters())}">
-					مشاهده همه نتایج (${escapeHtml(String(total || items.length))})
-				</a>
-			`;
-
-			liveResultsEl.innerHTML = rows + footer;
-			liveResultsEl.hidden = false;
-		}
-
-		async function fetchLiveResults() {
-			const q = queryInput?.value?.trim() || '';
-			if (!q || q.length < 2) {
-				hideLiveResults();
-				return;
-			}
-
-			const params = new URLSearchParams({ q, per_page: '10', page: '1' });
-			if (selectedGrade && homeGradeSlugs.includes(selectedGrade)) params.set('grade', selectedGrade);
-			const cacheKey = params.toString();
-
-			if (liveSearchCache.has(cacheKey)) {
-				const cached = liveSearchCache.get(cacheKey);
-				renderLiveResults(cached.items, cached.total);
-				return;
-			}
-
-			if (liveAbortController) {
-				liveAbortController.abort();
-			}
-			liveAbortController = new AbortController();
-			renderLiveLoading();
-
-			try {
-				const res = await fetch(`${apiBase}?${params.toString()}`, {
-					credentials: 'same-origin',
-					signal: liveAbortController.signal,
-				});
-				if (!res.ok) throw new Error('live_request_failed');
-				const data = await res.json();
-				const rawItems = Array.isArray(data.items) ? data.items : [];
-				const scoredItems = rawItems
-					.map((item) => ({ item, score: scoreLiveItem(item, q) }))
-					.sort((a, b) => b.score - a.score)
-					.map((row) => row.item)
-					.slice(0, 10);
-				const total = Number(data.total || scoredItems.length);
-				liveSearchCache.set(cacheKey, { items: scoredItems, total });
-				if (liveSearchCache.size > 30) {
-					const oldestKey = liveSearchCache.keys().next().value;
-					liveSearchCache.delete(oldestKey);
-				}
-				renderLiveResults(scoredItems, total);
-			} catch (e) {
-				if (e && e.name === 'AbortError') return;
-				hideLiveResults();
-			}
-		}
-
-		triggerBtn?.addEventListener('click', goToArchive);
+			goToArchive();
+		});
 		queryInput?.addEventListener('keydown', (event) => {
 			if (event.key === 'Enter') {
 				event.preventDefault();
-				hideLiveResults();
+				const qTrim = queryInput?.value?.trim() || '';
+				if (searchQueryUsable(qTrim)) {
+					runHomeSearch();
+					return;
+				}
 				goToArchive();
 			}
 		});
 		queryInput?.addEventListener('input', () => {
-			if (liveTimer) clearTimeout(liveTimer);
-			liveTimer = setTimeout(fetchLiveResults, 70);
-			if (gridTimer) clearTimeout(gridTimer);
-			gridTimer = setTimeout(() => {
-				fetchLawyers({ page: 1, append: false, skeleton: false });
-			}, 90);
+			const qTrim = queryInput?.value?.trim() || '';
+			if (!searchQueryUsable(qTrim)) {
+				if (searchDebounceTimer) {
+					clearTimeout(searchDebounceTimer);
+					searchDebounceTimer = null;
+				}
+				if (searchAbortController) {
+					searchAbortController.abort();
+					searchAbortController = null;
+				}
+				fetchLawyers({ page: 1, append: false, skeleton: true });
+				return;
+			}
+			scheduleHomeSearch();
 		});
 		queryInput?.addEventListener('focus', () => {
-			if ((queryInput?.value?.trim() || '').length >= 2) {
-				fetchLiveResults();
+			const qTrim = queryInput?.value?.trim() || '';
+			if (searchQueryUsable(qTrim)) {
+				scheduleHomeSearch();
 			}
 		});
 		loadMoreBtn?.addEventListener('click', () => {
@@ -663,89 +719,11 @@ get_header();
 			});
 			btn.classList.add('active');
 			fetchLawyers({ page: 1, skeleton: true });
-			fetchLiveResults();
-		});
-
-		document.addEventListener('click', (event) => {
-			const target = event.target;
-			if (!(target instanceof Node)) return;
-			if (
-				liveResultsEl &&
-				!liveResultsEl.contains(target) &&
-				target !== queryInput
-			) {
-				hideLiveResults();
-			}
+			scheduleHomeSearch();
 		});
 
 	</script>
 	<style>
-		.home-live-results {
-			position: absolute;
-			top: calc(100% + 8px);
-			right: 0;
-			left: 0;
-			background: #fff;
-			border: 1px solid #e2e8f0;
-			border-radius: 14px;
-			box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-			z-index: 40;
-			max-height: 420px;
-			overflow-y: auto;
-		}
-		.home-live-item {
-			display: flex;
-			gap: 12px;
-			align-items: center;
-			padding: 10px 12px;
-			border-bottom: 1px solid #f1f5f9;
-			text-decoration: none;
-			color: inherit;
-		}
-		.home-live-item:hover {
-			background: #f8fafc;
-		}
-		.home-live-item-image {
-			width: 48px;
-			height: 48px;
-			object-fit: cover;
-			border-radius: 10px;
-			flex-shrink: 0;
-		}
-		.home-live-item-title {
-			font-size: 14px;
-			font-weight: 700;
-			color: #0f172a;
-			margin-bottom: 2px;
-		}
-		.home-live-item-meta {
-			display: flex;
-			gap: 6px;
-			flex-wrap: wrap;
-			font-size: 12px;
-			color: #64748b;
-		}
-		.home-live-all {
-			display: block;
-			padding: 12px;
-			text-align: center;
-			font-size: 13px;
-			font-weight: 700;
-			color: #0f3d75;
-			text-decoration: none;
-			background: #f8fafc;
-			border-top: 1px solid #e2e8f0;
-			border-radius: 0 0 14px 14px;
-		}
-		.home-live-all:hover {
-			background: #f1f5f9;
-		}
-		.home-live-empty {
-			padding: 14px;
-			font-size: 13px;
-			color: #64748b;
-			text-align: center;
-		}
 		@media (max-width: 767px) {
 			.specialties > .container.text-right {
 				padding-left: 0 !important;

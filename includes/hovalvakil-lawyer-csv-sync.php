@@ -262,6 +262,19 @@ function hovalvakil_lawyers_csv_sync_apply_row( $post_id, array $assoc ) {
 	hovalvakil_lawyers_csv_sync_set_single_term( $post_id, 'hvl_city', $city_id );
 	hovalvakil_lawyers_csv_sync_set_single_term( $post_id, 'hvl_province', $prov_id );
 
+	if ( $city_id > 0 && $prov_id > 0 && function_exists( 'hovalvakil_city_set_province_id' ) ) {
+		hovalvakil_city_set_province_id( (int) $city_id, (int) $prov_id );
+	}
+
+	if ( function_exists( 'hovalvakil_term_get_route_slug' ) ) {
+		if ( $prov_id > 0 ) {
+			hovalvakil_term_get_route_slug( (int) $prov_id, true );
+		}
+		if ( $city_id > 0 ) {
+			hovalvakil_term_get_route_slug( (int) $city_id, true );
+		}
+	}
+
 	return null;
 }
 

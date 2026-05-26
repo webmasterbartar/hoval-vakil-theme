@@ -15,13 +15,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @return bool
  */
 function hovalvakil_is_bridged_template() {
-	$current_slug = function_exists( 'hovalvakil_current_request_slug' ) ? hovalvakil_current_request_slug() : '';
+	$current_slug = hovalvakil_current_request_slug();
 
 	if ( is_front_page() ) {
 		return true;
 	}
 	if ( is_post_type_archive( 'hvl_lawyer' ) ) {
 		return true;
+	}
+	$slug = hovalvakil_current_request_slug();
+	if ( str_starts_with( $slug, 'archive/' ) || str_starts_with( $slug, 'ostan/' ) || str_starts_with( $slug, 'shahr/' ) ) {
+		return true;
+	}
+	foreach ( [ 'paye-yek', 'karamooz' ] as $grade_route ) {
+		if ( $slug === $grade_route || str_starts_with( $slug, $grade_route . '/' ) ) {
+			return true;
+		}
 	}
 	if ( is_singular( 'hvl_lawyer' ) ) {
 		return true;
@@ -218,6 +227,9 @@ function hovalvakil_bridged_body_class( $classes ) {
 	$classes[] = 'hovalvakil-bridged';
 	$classes[] = 'text-on-surface';
 	if ( is_post_type_archive( 'hvl_lawyer' ) ) {
+		$classes[] = 'archive-page';
+	}
+	if ( str_starts_with( hovalvakil_current_request_slug(), 'archive/' ) ) {
 		$classes[] = 'archive-page';
 	}
 	if ( is_page_template( 'page-marakez.php' ) ) {

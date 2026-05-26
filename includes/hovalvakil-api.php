@@ -60,17 +60,25 @@ function hovalvakil_rest_resolve_taxonomy_slugs( $csv, $taxonomy ) {
 		if ( false !== strpos( $part, '%' ) ) {
 			$part = rawurldecode( $part );
 		}
+
+		$term = null;
+		if ( function_exists( 'hovalvakil_term_resolve_by_route' ) ) {
+			$term = hovalvakil_term_resolve_by_route( $part, $taxonomy );
+		}
+		if ( ! $term instanceof WP_Term && function_exists( 'hovalvakil_lawyer_archive_resolve_term' ) ) {
+			$term = hovalvakil_lawyer_archive_resolve_term( $part, $taxonomy );
+		}
+		if ( $term instanceof WP_Term ) {
+			$out[] = (string) $term->slug;
+			continue;
+		}
+
 		$t = get_term_by( 'slug', $part, $taxonomy );
 		if ( ! $t || is_wp_error( $t ) ) {
 			$t = get_term_by( 'name', $part, $taxonomy );
 		}
 		if ( $t && ! is_wp_error( $t ) ) {
 			$out[] = $t->slug;
-			continue;
-		}
-		$clean = sanitize_text_field( $part );
-		if ( '' !== $clean ) {
-			$out[] = $clean;
 		}
 	}
 	return array_values( array_unique( array_filter( $out ) ) );
@@ -79,7 +87,7 @@ function hovalvakil_rest_resolve_taxonomy_slugs( $csv, $taxonomy ) {
 /**
  * Meta_query برای فیلتر «پایه» وکالت از روی hvl_lawyer_grade (متن آزاد ایمپورت).
  *
- * @param string $slug یکی از: p1 | p2 | karamooz.
+ * @param string $slug یکی از: p1 | karamooz.
  * @return array<string, mixed>|null
  */
 function hovalvakil_lawyer_grade_meta_query_for_slug( $slug ) {
@@ -94,29 +102,6 @@ function hovalvakil_lawyer_grade_meta_query_for_slug( $slug ) {
 				'key'     => 'hvl_lawyer_grade',
 				'value'   => 'پایه یک',
 				'compare' => 'LIKE',
-			],
-		];
-	}
-	if ( 'p2' === $slug ) {
-		return [
-			'relation' => 'AND',
-			[
-				'relation' => 'OR',
-				[
-					'key'     => 'hvl_lawyer_grade',
-					'value'   => 'پایه دو',
-					'compare' => 'LIKE',
-				],
-				[
-					'key'     => 'hvl_lawyer_grade',
-					'value'   => 'پایه ۲',
-					'compare' => 'LIKE',
-				],
-			],
-			[
-				'key'     => 'hvl_lawyer_grade',
-				'value'   => 'پایه یک',
-				'compare' => 'NOT LIKE',
 			],
 		];
 	}
@@ -141,11 +126,11 @@ function hovalvakil_lawyer_grade_meta_query_for_slug( $slug ) {
 /**
  * meta_query برای چند slug مقطع (OR بین مقاطع).
  *
- * @param string[] $slugs هر مقدار: p1 | p2 | karamooz.
+ * @param string[] $slugs هر مقدار: p1 | karamooz.
  * @return array<string, mixed>|null
  */
 function hovalvakil_lawyer_grade_meta_query_for_slugs( array $slugs ) {
-	$allowed = [ 'p1', 'p2', 'karamooz' ];
+	$allowed = [ 'p1', 'karamooz' ];
 	$clean   = [];
 	foreach ( $slugs as $s ) {
 		$s = sanitize_key( (string) $s );
@@ -173,7 +158,7 @@ function hovalvakil_lawyer_grade_meta_query_for_slugs( array $slugs ) {
 }
 
 /**
- * تعداد وکلای منتشرشده برای یک slug مقطع (p1 | p2 | karamooz).
+ * تعداد وکلای منتشرشده برای یک slug مقطع (p1 | karamooz).
  *
  * @param string $slug Slug.
  * @return int
@@ -205,20 +190,46 @@ function hovalvakil_lawyer_grade_count_for_slug( $slug ) {
  */
 function hovalvakil_home_city_province_pairs_for_lawyers() {
 	global $wpdb;
-	$sql  = "SELECT ttc.term_id AS city_id, ttp.term_id AS province_id, COUNT(DISTINCT p.ID) AS lawyer_count
+
+	// Prefer explicit city→province links (term meta).
+	$sql_meta = "SELECT c.term_id AS city_id, CAST(tm.meta_value AS UNSIGNED) AS province_id, COUNT(DISTINCT p.ID) AS lawyer_count
 		FROM {$wpdb->posts} p
 		INNER JOIN {$wpdb->term_relationships} trc ON p.ID = trc.object_id
 		INNER JOIN {$wpdb->term_taxonomy} ttc ON trc.term_taxonomy_id = ttc.term_taxonomy_id AND ttc.taxonomy = %s
-		INNER JOIN {$wpdb->term_relationships} trp ON p.ID = trp.object_id
-		INNER JOIN {$wpdb->term_taxonomy} ttp ON trp.term_taxonomy_id = ttp.term_taxonomy_id AND ttp.taxonomy = %s
-		WHERE p.post_type = %s AND p.post_status = %s
-		GROUP BY ttc.term_id, ttp.term_id
+		INNER JOIN {$wpdb->terms} c ON c.term_id = ttc.term_id
+		INNER JOIN {$wpdb->termmeta} tm ON tm.term_id = c.term_id AND tm.meta_key = %s
+		WHERE p.post_type = %s AND p.post_status = %s AND CAST(tm.meta_value AS UNSIGNED) > 0
+		GROUP BY c.term_id, province_id
 		HAVING lawyer_count > 0
 		ORDER BY province_id ASC, lawyer_count DESC, city_id ASC";
-	$rows = $wpdb->get_results( $wpdb->prepare( $sql, 'hvl_city', 'hvl_province', 'hvl_lawyer', 'publish' ), ARRAY_A );
+
+	$rows = $wpdb->get_results(
+		$wpdb->prepare( $sql_meta, 'hvl_city', HOVALVAKIL_CITY_PROVINCE_META, 'hvl_lawyer', 'publish' ),
+		ARRAY_A
+	);
+
+	if ( ! is_array( $rows ) || empty( $rows ) ) {
+		// Fallback: infer from co-occurrence on the same lawyer post.
+		$sql  = "SELECT ttc.term_id AS city_id, ttp.term_id AS province_id, COUNT(DISTINCT p.ID) AS lawyer_count
+			FROM {$wpdb->posts} p
+			INNER JOIN {$wpdb->term_relationships} trc ON p.ID = trc.object_id
+			INNER JOIN {$wpdb->term_taxonomy} ttc ON trc.term_taxonomy_id = ttc.term_taxonomy_id AND ttc.taxonomy = %s
+			INNER JOIN {$wpdb->term_relationships} trp ON p.ID = trp.object_id
+			INNER JOIN {$wpdb->term_taxonomy} ttp ON trp.term_taxonomy_id = ttp.term_taxonomy_id AND ttp.taxonomy = %s
+			WHERE p.post_type = %s AND p.post_status = %s
+			GROUP BY ttc.term_id, ttp.term_id
+			HAVING lawyer_count > 0
+			ORDER BY province_id ASC, lawyer_count DESC, city_id ASC";
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( $sql, 'hvl_city', 'hvl_province', 'hvl_lawyer', 'publish' ),
+			ARRAY_A
+		);
+	}
+
 	if ( ! is_array( $rows ) || empty( $rows ) ) {
 		return [];
 	}
+
 	$out = [];
 	foreach ( $rows as $row ) {
 		$cid = (int) ( $row['city_id'] ?? 0 );
@@ -257,9 +268,11 @@ function hovalvakil_register_rest_routes() {
 				'q'             => [ 'type' => 'string', 'required' => false ],
 				'city'          => [ 'type' => 'string', 'required' => false ],
 				'city_term'     => [ 'type' => 'string', 'required' => false ],
-				'province_term' => [ 'type' => 'string', 'required' => false ],
-				'specialty'     => [ 'type' => 'string', 'required' => false ],
+				'province_term'    => [ 'type' => 'string', 'required' => false ],
+				'province_term_id' => [ 'type' => 'integer', 'required' => false ],
+				'specialty'        => [ 'type' => 'string', 'required' => false ],
 				'grade'         => [ 'type' => 'string', 'required' => false ],
+				'home'          => [ 'type' => 'boolean', 'required' => false, 'default' => false ],
 				'page'          => [ 'type' => 'integer', 'required' => false, 'default' => 1 ],
 				'per_page'      => [ 'type' => 'integer', 'required' => false, 'default' => 16 ],
 			],
@@ -521,6 +534,30 @@ function hovalvakil_rest_get_centers( WP_REST_Request $request ) {
 }
 
 /**
+ * Detect license-number style query (digits only, min 2) even if theme helpers are missing.
+ *
+ * @param string $q Search string.
+ * @return bool
+ */
+function hovalvakil_rest_is_digit_only_license_query( $q ) {
+	if ( function_exists( 'hovalvakil_lawyer_search_is_digit_primary' ) ) {
+		return hovalvakil_lawyer_search_is_digit_primary( $q );
+	}
+	$q = trim( (string) $q );
+	if ( '' === $q ) {
+		return false;
+	}
+	$digits = function_exists( 'hovalvakil_lawyer_search_digits_key' )
+		? hovalvakil_lawyer_search_digits_key( $q )
+		: preg_replace( '/\D+/u', '', $q );
+	if ( strlen( (string) $digits ) < 2 ) {
+		return false;
+	}
+	$rest = preg_replace( '/[0-9۰-۹٠-٩\/\-\s\.,،‌_\x{200c}\x{00a0}]+/u', '', $q );
+	return '' === trim( (string) $rest );
+}
+
+/**
  * Return lightweight lawyers list for AJAX search.
  *
  * @param WP_REST_Request $request Request.
@@ -529,8 +566,12 @@ function hovalvakil_rest_get_centers( WP_REST_Request $request ) {
  */
 function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 	$q = sanitize_text_field( trim( (string) wp_unslash( $request->get_param( 'q' ) ) ) );
-	// Ignore 0–1 char / accidental IME noise so tax-only filters are not killed by the "strong search" branch.
-	if ( mb_strlen( $q ) < 2 ) {
+	// Ignore noise unless name (≥2 chars) or license digits (≥2). Do not wipe q when helper is missing (old partial deploy).
+	if ( function_exists( 'hovalvakil_lawyer_search_query_is_usable' ) ) {
+		if ( ! hovalvakil_lawyer_search_query_is_usable( $q ) ) {
+			$q = '';
+		}
+	} elseif ( mb_strlen( $q ) < 2 ) {
 		$q = '';
 	}
 
@@ -545,16 +586,44 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			continue;
 		}
 		$sk = sanitize_key( $part );
-		if ( in_array( $sk, [ 'p1', 'p2', 'karamooz' ], true ) && ! in_array( $sk, $grade_slugs, true ) ) {
+		if ( in_array( $sk, [ 'p1', 'karamooz' ], true ) && ! in_array( $sk, $grade_slugs, true ) ) {
 			$grade_slugs[] = $sk;
 		}
 	}
 	$page      = max( 1, (int) $request->get_param( 'page' ) );
 	$per_page  = min( 48, max( 1, (int) $request->get_param( 'per_page' ) ) );
+	$is_home   = rest_sanitize_boolean( $request->get_param( 'home' ) );
+
+	$province_filter_keys = [];
+	$province_term_id     = max( 0, (int) $request->get_param( 'province_term_id' ) );
+	if ( $province_term_id > 0 ) {
+		$prov_by_id = get_term( $province_term_id, 'hvl_province' );
+		if ( $prov_by_id instanceof WP_Term && ! is_wp_error( $prov_by_id ) ) {
+			$province_filter_keys[] = (string) $prov_by_id->slug;
+		}
+	}
 
 	$tax_query = [];
 	$city_slugs       = hovalvakil_rest_resolve_taxonomy_slugs( $city_term, 'hvl_city' );
 	$province_slugs  = hovalvakil_rest_resolve_taxonomy_slugs( $province_term, 'hvl_province' );
+	if ( empty( $province_filter_keys ) && ! empty( $province_slugs ) ) {
+		$province_filter_keys = $province_slugs;
+	}
+	// Auto-apply home grid province (Tehran) ONLY when there is no search query.
+	// A user searching by name/license must find lawyers from any province.
+	if ( $is_home && '' === $q && function_exists( 'hovalvakil_home_grid_province_keys' ) ) {
+		foreach ( hovalvakil_home_grid_province_keys() as $home_prov ) {
+			$home_prov = sanitize_title( (string) $home_prov );
+			if ( '' !== $home_prov && ! in_array( $home_prov, $province_filter_keys, true ) ) {
+				$province_filter_keys[] = $home_prov;
+			}
+		}
+	}
+
+	$province_filter_on = false;
+	if ( ! empty( $province_filter_keys ) && function_exists( 'hovalvakil_lawyer_enable_province_filter' ) ) {
+		$province_filter_on = hovalvakil_lawyer_enable_province_filter( $province_filter_keys );
+	}
 	$specialty_slugs = hovalvakil_rest_resolve_taxonomy_slugs( $specialty, 'hvl_specialty' );
 
 	if ( '' !== $city ) {
@@ -580,11 +649,24 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		];
 	}
 	if ( ! empty( $province_slugs ) ) {
-		$tax_query[] = [
-			'taxonomy' => 'hvl_province',
-			'field'    => 'slug',
-			'terms'    => $province_slugs,
-		];
+		$province_clause = function_exists( 'hovalvakil_lawyer_build_province_filter_tax_query' )
+			? hovalvakil_lawyer_build_province_filter_tax_query( $province_slugs )
+			: null;
+		if ( is_array( $province_clause ) && ! empty( $province_clause ) ) {
+			$tax_query[] = $province_clause;
+		} else {
+			$prov_terms = function_exists( 'hovalvakil_lawyer_resolve_province_terms' )
+				? hovalvakil_lawyer_resolve_province_terms( $province_slugs )
+				: [];
+			if ( ! empty( $prov_terms ) ) {
+				$tax_query[] = [
+					'taxonomy'         => 'hvl_province',
+					'field'            => 'term_id',
+					'terms'            => array_map( static fn( $t ) => (int) $t->term_id, $prov_terms ),
+					'include_children' => false,
+				];
+			}
+		}
 	}
 	if ( count( $tax_query ) > 1 ) {
 		$tax_query['relation'] = 'AND';
@@ -613,106 +695,67 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 
 	$args = $base_args;
 
-	// Strong search: lawyer text + city/province name match + office address meta.
+	if ( $is_home && '' === $q && function_exists( 'hovalvakil_home_grid_query' ) ) {
+		$query = hovalvakil_home_grid_query(
+			[
+				'paged'          => $page,
+				'posts_per_page' => $per_page,
+				'grade_slugs'    => $grade_slugs,
+			]
+		);
+		goto hovalvakil_rest_lawyers_build_items;
+	}
+
+	// Search path. The home page uses a single-query fast path (no taxonomy fuzzy joins).
+	// Other consumers fall back to the heavier strong-search for richer matching.
 	if ( '' !== $q ) {
-		$city_terms = get_terms(
-			[
-				'taxonomy'   => 'hvl_city',
-				'hide_empty' => false,
-			]
-		);
-
-		$province_terms = get_terms(
-			[
-				'taxonomy'   => 'hvl_province',
-				'hide_empty' => false,
-			]
-		);
-
-		$matched_city_slugs = [];
-		if ( ! is_wp_error( $city_terms ) ) {
-			foreach ( $city_terms as $cterm ) {
-				if ( false !== mb_stripos( $cterm->name, $q ) ) {
-					$matched_city_slugs[] = $cterm->slug;
-				}
-			}
-		}
-
-		$matched_province_slugs = [];
-		if ( ! is_wp_error( $province_terms ) ) {
-			foreach ( $province_terms as $pterm ) {
-				if ( false !== mb_stripos( $pterm->name, $q ) ) {
-					$matched_province_slugs[] = $pterm->slug;
-				}
-			}
-		}
-
-		$text_match_args = $base_args;
-		$text_match_args['fields']         = 'ids';
-		$text_match_args['posts_per_page'] = 300;
-		$text_match_args['paged']          = 1;
-		$text_match_args['no_found_rows']  = true;
-		$text_match_args['s']              = $q;
-		$text_ids = get_posts( $text_match_args );
-
-		$meta_match_args = $base_args;
-		$meta_match_args['fields']         = 'ids';
-		$meta_match_args['posts_per_page'] = 300;
-		$meta_match_args['paged']          = 1;
-		$meta_match_args['no_found_rows']  = true;
-		$meta_match_args['meta_query']     = [
-			'relation' => 'OR',
-			[
-				'key'     => 'hvl_office_address',
-				'value'   => $q,
-				'compare' => 'LIKE',
-			],
+		$matched_ids = [];
+		$filter_only = [
+			'post_type'              => 'hvl_lawyer',
+			'post_status'            => 'publish',
+			'no_found_rows'          => true,
+			'update_post_meta_cache' => false,
+			'update_post_term_cache' => true,
 		];
-		$meta_match_ids = get_posts( $meta_match_args );
-
-		$tax_match_ids = [];
-		if ( ! empty( $matched_city_slugs ) || ! empty( $matched_province_slugs ) ) {
-			$tax_match_args = $base_args;
-			$tax_match_args['fields']         = 'ids';
-			$tax_match_args['posts_per_page'] = 300;
-			$tax_match_args['paged']          = 1;
-			$tax_match_args['no_found_rows']  = true;
-
-			$q_tax = [];
-			if ( ! empty( $matched_city_slugs ) ) {
-				$q_tax[] = [
-					'taxonomy' => 'hvl_city',
-					'field'    => 'slug',
-					'terms'    => $matched_city_slugs,
-				];
-			}
-			if ( ! empty( $matched_province_slugs ) ) {
-				$q_tax[] = [
-					'taxonomy' => 'hvl_province',
-					'field'    => 'slug',
-					'terms'    => $matched_province_slugs,
-				];
-			}
-			if ( count( $q_tax ) > 1 ) {
-				$q_tax['relation'] = 'OR';
-			}
-
-			if ( ! empty( $tax_match_args['tax_query'] ) ) {
-				$tax_match_args['tax_query'] = [
-					'relation' => 'AND',
-					$tax_match_args['tax_query'],
-					$q_tax,
-				];
-			} else {
-				$tax_match_args['tax_query'] = $q_tax;
-			}
-
-			$tax_match_ids = get_posts( $tax_match_args );
+		if ( ! empty( $tax_query ) ) {
+			$filter_only['tax_query'] = $tax_query;
+		}
+		if ( $grade_meta ) {
+			$filter_only['meta_query'] = $grade_meta;
 		}
 
-		$matched_ids = array_values( array_unique( array_map( 'intval', array_merge( $text_ids, $tax_match_ids, $meta_match_ids ) ) ) );
-		if ( function_exists( 'hovalvakil_lawyer_sort_ids_image_first' ) ) {
-			$matched_ids = hovalvakil_lawyer_sort_ids_image_first( $matched_ids );
+		$digit_only = hovalvakil_rest_is_digit_only_license_query( $q );
+
+		if ( $is_home && function_exists( 'hovalvakil_home_search_lawyer_ids' ) ) {
+			$matched_ids = hovalvakil_home_search_lawyer_ids( $q, 100 );
+			if ( ( ! empty( $tax_query ) || $grade_meta ) && ! empty( $matched_ids ) && function_exists( 'hovalvakil_lawyer_filter_post_ids_with_query' ) ) {
+				$extra = [];
+				if ( ! empty( $tax_query ) ) {
+					$extra['tax_query'] = $tax_query;
+				}
+				if ( $grade_meta ) {
+					$extra['meta_query'] = $grade_meta;
+				}
+				$matched_ids = hovalvakil_lawyer_filter_post_ids_with_query( $matched_ids, $extra );
+			}
+		} elseif ( $digit_only && function_exists( 'hovalvakil_lawyer_license_search_post_ids_direct' ) ) {
+			$license_ids = hovalvakil_lawyer_license_search_post_ids_direct( $q, 500 );
+			$extra       = [];
+			if ( ! empty( $tax_query ) ) {
+				$extra['tax_query'] = $tax_query;
+			}
+			if ( $grade_meta ) {
+				$extra['meta_query'] = $grade_meta;
+			}
+			if ( empty( $extra ) ) {
+				$matched_ids = $license_ids;
+			} elseif ( function_exists( 'hovalvakil_lawyer_filter_post_ids_with_query' ) ) {
+				$matched_ids = hovalvakil_lawyer_filter_post_ids_with_query( $license_ids, $extra );
+			} else {
+				$matched_ids = $license_ids;
+			}
+		} elseif ( function_exists( 'hovalvakil_lawyer_strong_search_all_ids' ) ) {
+			$matched_ids = hovalvakil_lawyer_strong_search_all_ids( $filter_only, $q );
 		}
 
 		if ( empty( $matched_ids ) ) {
@@ -723,9 +766,14 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 		}
 	}
 
-	$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = ( '' === $q );
+	$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = ( '' === $q && ! $province_filter_on );
 	$query                                                 = new WP_Query( $args );
 	unset( $GLOBALS['hovalvakil_lawyer_query_order_image_first'] );
+	if ( $province_filter_on && function_exists( 'hovalvakil_lawyer_disable_province_filter' ) ) {
+		hovalvakil_lawyer_disable_province_filter();
+	}
+
+	hovalvakil_rest_lawyers_build_items:
 	$items = [];
 
 	while ( $query->have_posts() ) {
@@ -768,6 +816,9 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			: '';
 
 		$license_no_raw = trim( (string) get_post_meta( $post_id, 'hvl_license_no', true ) );
+		if ( '' === $license_no_raw ) {
+			$license_no_raw = trim( (string) get_post_meta( $post_id, 'hvl_license', true ) );
+		}
 		$license_no_disp = '';
 		if ( '' !== $license_no_raw ) {
 			$license_no_disp = function_exists( 'hovalvakil_lawyer_digits_to_fa' )
@@ -786,7 +837,8 @@ function hovalvakil_rest_get_lawyers( WP_REST_Request $request ) {
 			'province'   => $province_name,
 			'location_line' => $location_line,
 			'card_license_line' => $card_license_line,
-			'license_no' => $license_no_disp,
+			'license_no'      => $license_no_disp,
+			'license_no_raw'  => $license_no_raw,
 			'lawyer_grade' => $lawyer_grade,
 			'license_issued' => $lic_issued_raw,
 			'license_issued_display' => $lic_issued_disp,
@@ -891,6 +943,23 @@ function hovalvakil_rest_create_reservation( WP_REST_Request $request ) {
 			400
 		);
 	}
+
+	// Enforce lawyer's availability toggles for in-person / phone reservations.
+	if ( $lawyer_id > 0 && '' !== $service && function_exists( 'hvl_ll_lawyer_accepts_service' ) ) {
+		if ( ! hvl_ll_lawyer_accepts_service( $lawyer_id, $service ) ) {
+			$msg = ( false !== mb_strpos( $service, 'تلفنی' ) )
+				? 'وکیل در حال حاضر پذیرای رزرو مشاوره تلفنی نیست.'
+				: 'وکیل در حال حاضر پذیرای رزرو حضوری نیست.';
+			return new WP_REST_Response(
+				[
+					'ok'      => false,
+					'message' => $msg,
+				],
+				403
+			);
+		}
+	}
+
 	if ( '' === $date || '' === $time ) {
 		return new WP_REST_Response(
 			[
@@ -1053,7 +1122,9 @@ function hovalvakil_rest_get_lawyer_by_id( WP_REST_Request $request ) {
 				'city'        => $city_nm,
 				'province'    => $province_nm,
 				'location_line' => implode( '، ', array_filter( [ $province_nm, $city_nm ] ) ),
-				'mobile'          => (string) get_post_meta( $lawyer_id, 'hvl_mobile', true ),
+				'mobile'          => ( '1' === (string) get_post_meta( $lawyer_id, 'hvl_reveal_mobile', true ) && '1' !== (string) get_post_meta( $lawyer_id, 'hvl_hide_mobile', true ) )
+					? (string) get_post_meta( $lawyer_id, 'hvl_mobile', true )
+					: '',
 				'office_mobile'   => (string) get_post_meta( $lawyer_id, 'hvl_office_mobile', true ),
 				'office_phone'    => (string) get_post_meta( $lawyer_id, 'hvl_office_phone', true ),
 				'office_address'  => (string) get_post_meta( $lawyer_id, 'hvl_office_address', true ),

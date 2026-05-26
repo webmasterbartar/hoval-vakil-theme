@@ -215,7 +215,37 @@ if ( $tab_license_contact ) {
 if ( $tab_reviews ) {
 	$profile_tabs['reviews'] = 'نظرات';
 }
-$profile_tabs['calendar'] = 'رزرو نوبت';
+$lawyer_accepts_inperson = function_exists( 'hvl_ll_lawyer_accepts_inperson' )
+	? hvl_ll_lawyer_accepts_inperson( (int) $post_id )
+	: true;
+$lawyer_accepts_phone    = function_exists( 'hvl_ll_lawyer_accepts_phone' )
+	? hvl_ll_lawyer_accepts_phone( (int) $post_id )
+	: true;
+$lawyer_accepts_any      = $lawyer_accepts_inperson || $lawyer_accepts_phone;
+
+// Social/contact networks from the lawyer panel wizard.
+$hvl_social_defs = function_exists( 'hvl_ll_social_fields' ) ? hvl_ll_social_fields() : [];
+$hvl_social_rows = [];
+foreach ( $hvl_social_defs as $skey => $sinfo ) {
+	$val = (string) get_post_meta( $post_id, 'hvl_url_' . $skey, true );
+	if ( '' === trim( $val ) ) {
+		continue;
+	}
+	$url = function_exists( 'hvl_ll_social_public_url' ) ? hvl_ll_social_public_url( $skey, $val ) : '';
+	if ( '' === $url ) {
+		continue;
+	}
+	$hvl_social_rows[ $skey ] = [
+		'label' => (string) ( $sinfo['label'] ?? $skey ),
+		'icon'  => (string) ( $sinfo['icon'] ?? 'link' ),
+		'value' => $val,
+		'url'   => $url,
+	];
+}
+
+if ( $lawyer_accepts_any ) {
+	$profile_tabs['calendar'] = 'رزرو نوبت';
+}
 
 $first_tab_id = array_key_first( $profile_tabs );
 
@@ -320,7 +350,18 @@ get_header();
 					</div>
 					<?php endif; ?>
 					<div class="action-buttons">
-						<a href="<?php echo esc_url( $reservation_url ); ?>" class="btn-primary-sm" style="display:block;width:100%;padding:.875rem;text-align:center;"><?php echo esc_html__( 'رزرو نوبت حضوری', 'hello-elementor' ); ?></a>
+						<?php if ( $lawyer_accepts_inperson ) : ?>
+							<a href="<?php echo esc_url( add_query_arg( [ 'service' => 'مشاوره حضوری' ], $reservation_url ) ); ?>" class="btn-primary-sm" style="display:block;width:100%;padding:.875rem;text-align:center;"><?php echo esc_html__( 'رزرو نوبت حضوری', 'hello-elementor' ); ?></a>
+						<?php endif; ?>
+						<?php if ( $lawyer_accepts_phone ) : ?>
+							<a href="<?php echo esc_url( add_query_arg( [ 'service' => 'مشاوره تلفنی' ], $reservation_url ) ); ?>" class="btn-primary-sm" style="display:block;width:100%;padding:.875rem;text-align:center;margin-top:.5rem;background:var(--secondary-container,#fed977);color:#2d2200;"><?php echo esc_html__( 'رزرو مشاوره تلفنی', 'hello-elementor' ); ?></a>
+						<?php endif; ?>
+						<?php if ( ! $lawyer_accepts_inperson && ! $lawyer_accepts_phone ) : ?>
+							<div style="text-align:center;padding:1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:.5rem;color:#9a3412;font-size:.875rem;line-height:1.7;">
+								<span class="material-symbols-outlined" style="vertical-align:-4px;font-size:18px;margin-left:4px;">event_busy</span>
+								<?php echo esc_html__( 'این وکیل در حال حاضر پذیرای رزرو نوبت آنلاین نیست.', 'hello-elementor' ); ?>
+							</div>
+						<?php endif; ?>
 					</div>
 				</div>
 			</div>
@@ -401,12 +442,186 @@ get_header();
 					<?php if ( $has_phones ) : ?>
 					<section class="content-block" style="<?php echo $has_license_dl ? 'margin-top:1.5rem;' : ''; ?>">
 						<h2 class="block-title"><span class="material-symbols-outlined">call</span><?php echo esc_html__( 'تماس', 'hello-elementor' ); ?></h2>
+						<style>
+							.hvl-mobile-blur {
+								filter: blur(6px);
+								user-select: none;
+								-webkit-user-select: none;
+								cursor: not-allowed;
+								color: inherit;
+								background: rgba(0,0,0,.04);
+								padding: 0 .35rem;
+								border-radius: 4px;
+								display: inline-block;
+							}
+							.hvl-mobile-blur-note {
+								margin-inline-start: .4rem;
+								font-size: 12px;
+								color: var(--on-surface-variant, #6b7280);
+								background: var(--surface-variant, #eef0f3);
+								padding: 2px 8px;
+								border-radius: 999px;
+								vertical-align: middle;
+							}
+
+							/* ─── Working hours (structured) ─── */
+							.hvl-wh-public {
+								margin-top: 1rem;
+								background: linear-gradient(180deg, #ffffff, #fafbfc);
+								border: 1px solid #eef0f3;
+								border-radius: .875rem;
+								padding: .85rem 1rem;
+							}
+							.hvl-wh-public-title {
+								display: flex;
+								align-items: center;
+								gap: .35rem;
+								margin: 0 0 .6rem;
+								font-size: .8125rem;
+								font-weight: 700;
+								color: #1b1c1c;
+							}
+							.hvl-wh-public-title .material-symbols-outlined { font-size: 18px; color: #041534; }
+							.hvl-wh-public-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+							.hvl-wh-public-row {
+								display: flex;
+								justify-content: space-between;
+								align-items: center;
+								padding: .45rem .55rem;
+								border-radius: .5rem;
+								font-size: .8125rem;
+								line-height: 1.6;
+								transition: background .2s;
+							}
+							.hvl-wh-public-row + .hvl-wh-public-row { border-top: 1px dashed #eef0f3; }
+							.hvl-wh-public-row.is-closed { color: #6b7280; }
+							.hvl-wh-public-row.is-today {
+								background: rgba(254,217,119,.18);
+								border: 1px solid rgba(254,217,119,.5);
+							}
+							.hvl-wh-public-day {
+								font-weight: 700;
+								color: #1b1c1c;
+								display: inline-flex;
+								gap: .35rem;
+								align-items: center;
+							}
+							.hvl-wh-public-row.is-closed .hvl-wh-public-day { color: #6b7280; }
+							.hvl-wh-public-today {
+								font-style: normal;
+								font-size: .625rem;
+								background: #041534;
+								color: #fff;
+								padding: 2px 6px;
+								border-radius: 999px;
+								font-weight: 700;
+							}
+							.hvl-wh-public-time {
+								font-variant-numeric: tabular-nums;
+								font-weight: 700;
+								color: #041534;
+								background: #fff;
+								padding: 2px 8px;
+								border: 1px solid #eef0f3;
+								border-radius: .375rem;
+							}
+							.hvl-wh-public-closed {
+								font-size: .75rem;
+								color: #9ca3af;
+								background: #fafafa;
+								padding: 2px 10px;
+								border-radius: 999px;
+								font-weight: 600;
+							}
+
+							/* ─── Social / contact cards (sleek) ─── */
+							.hvl-social-section .block-title { margin-bottom: .4rem; }
+							.hvl-social-sub {
+								font-size: .8125rem;
+								color: #6b7280;
+								margin: 0 0 .9rem;
+								line-height: 1.7;
+							}
+							.hvl-social-cards {
+								display: grid;
+								grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+								gap: .65rem;
+							}
+							.hvl-social-card {
+								display: flex;
+								align-items: center;
+								gap: .65rem;
+								padding: .65rem .8rem;
+								background: #fff;
+								border: 1.5px solid #eef0f3;
+								border-radius: .875rem;
+								color: #1b1c1c;
+								text-decoration: none;
+								transition: border-color .2s, background .2s, transform .15s, box-shadow .2s;
+								min-width: 0;
+							}
+							.hvl-social-card:hover {
+								border-color: #041534;
+								background: #fafafa;
+								transform: translateY(-1px);
+								box-shadow: 0 4px 14px rgba(4,21,52,.08);
+							}
+							.hvl-social-card-icon {
+								width: 38px;
+								height: 38px;
+								flex-shrink: 0;
+								border-radius: 10px;
+								display: inline-flex;
+								align-items: center;
+								justify-content: center;
+								background: #f6f7fb;
+								line-height: 0;
+							}
+							.hvl-social-card-icon svg { display: block; }
+							.hvl-social-card-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+							.hvl-social-card-label { font-size: .8125rem; font-weight: 700; color: #1b1c1c; }
+							.hvl-social-card-value {
+								font-size: .6875rem;
+								color: #6b7280;
+								white-space: nowrap;
+								overflow: hidden;
+								text-overflow: ellipsis;
+								max-width: 100%;
+							}
+							.hvl-social-card-arrow { font-size: 18px !important; color: #c5c6cf; flex-shrink: 0; transition: color .2s, transform .15s; }
+							.hvl-social-card:hover .hvl-social-card-arrow { color: #041534; transform: translateX(-2px); }
+							/* Per-platform tinted icon backgrounds */
+							.hvl-social-card[data-platform="website"]   .hvl-social-card-icon { color: #6b7280; }
+							.hvl-social-card[data-platform="instagram"] .hvl-social-card-icon { color: #E1306C; background: #FCE4EC; }
+							.hvl-social-card[data-platform="telegram"]  .hvl-social-card-icon { color: #26A5E4; background: #E3F2FD; }
+							.hvl-social-card[data-platform="whatsapp"]  .hvl-social-card-icon { color: #25D366; background: #E8F5E9; }
+							.hvl-social-card[data-platform="bale"]      .hvl-social-card-icon { color: #22A4EE; background: #E3F2FD; }
+							.hvl-social-card[data-platform="eitaa"]     .hvl-social-card-icon { color: #F8A116; background: #FFF3E0; }
+							.hvl-social-card[data-platform="soroush"]   .hvl-social-card-icon { color: #00BAEC; background: #E0F7FA; }
+							.hvl-social-card[data-platform="rubika"]    .hvl-social-card-icon { background: #fafafa; }
+							.hvl-social-card[data-platform="igap"]      .hvl-social-card-icon { color: #16A085; background: #E0F2F1; }
+						</style>
 						<ul class="hvl-contact-list" style="list-style:none;padding:0;margin:0;line-height:2;">
-							<?php if ( '' !== $mobile ) : ?>
-								<li><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">smartphone</span> <?php echo esc_html__( 'همراه وکیل', 'hello-elementor' ); ?>: <a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $mobile ) ); ?>"><?php echo esc_html( $mobile ); ?></a></li>
+							<?php
+							$reveal_mobile = ( '1' === (string) get_post_meta( $post_id, 'hvl_reveal_mobile', true ) );
+							$hide_mobile   = ( '1' === (string) get_post_meta( $post_id, 'hvl_hide_mobile', true ) );
+							/** Placeholder shown in HTML when lawyer hasn't revealed their number. Real number never reaches the page. */
+							$mobile_placeholder = '09121111111';
+							?>
+							<?php if ( '' !== $mobile && ! $hide_mobile ) : ?>
+								<li>
+									<span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">smartphone</span>
+									<?php echo esc_html__( 'همراه وکیل', 'hello-elementor' ); ?>:
+									<?php if ( $reveal_mobile ) : ?>
+										<a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $mobile ) ); ?>"><?php echo esc_html( $mobile ); ?></a>
+									<?php else : ?>
+										<span class="hvl-mobile-blur" aria-label="<?php esc_attr_e( 'شماره مخفی', 'hello-elementor' ); ?>" title="<?php esc_attr_e( 'برای نمایش شماره، وکیل باید آن را در پنل خود فعال کند.', 'hello-elementor' ); ?>" dir="ltr"><?php echo esc_html( $mobile_placeholder ); ?></span>
+										<span class="hvl-mobile-blur-note"><?php esc_html_e( 'مخفی‌شده توسط وکیل', 'hello-elementor' ); ?></span>
+									<?php endif; ?>
+								</li>
 							<?php endif; ?>
 							<?php if ( '' !== $office_mobile && trim( (string) $office_mobile ) !== trim( (string) $mobile ) ) : ?>
-								<li><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">phone_iphone</span> <?php echo esc_html__( 'همراه دفتر', 'hello-elementor' ); ?>: <a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_mobile ) ); ?>"><?php echo esc_html( $office_mobile ); ?></a></li>
+								<li><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">phone_iphone</span> <?php echo esc_html__( 'تلفن دفتر', 'hello-elementor' ); ?>: <a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_mobile ) ); ?>"><?php echo esc_html( $office_mobile ); ?></a></li>
 							<?php endif; ?>
 							<?php if ( '' !== $office_phone ) : ?>
 								<li><span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle;">call</span> <?php echo esc_html__( 'تلفن دفتر', 'hello-elementor' ); ?>: <a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_phone ) ); ?>"><?php echo esc_html( $office_phone ); ?></a></li>
@@ -461,6 +676,33 @@ get_header();
 				</div>
 				<?php endif; ?>
 
+				<?php if ( ! empty( $hvl_social_rows ) ) : ?>
+				<section class="content-block hvl-social-section" style="margin-top:1.25rem;">
+					<h2 class="block-title">
+						<span class="material-symbols-outlined">share</span>
+						<?php echo esc_html__( 'راه‌های ارتباطی و شبکه‌های اجتماعی', 'hello-elementor' ); ?>
+					</h2>
+					<p class="hvl-social-sub">برای ارتباط مستقیم با وکیل، روی هر گزینه کلیک کنید.</p>
+					<div class="hvl-social-cards">
+						<?php foreach ( $hvl_social_rows as $skey => $srow ) : ?>
+							<a href="<?php echo esc_url( $srow['url'] ); ?>" target="_blank" rel="noopener"
+								class="hvl-social-card" data-platform="<?php echo esc_attr( $skey ); ?>"
+								aria-label="<?php echo esc_attr( $srow['label'] ); ?>">
+								<span class="hvl-social-card-icon" aria-hidden="true">
+									<?php echo function_exists( 'hvl_ll_social_icon_svg' ) ? hvl_ll_social_icon_svg( $skey, 22 ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+								</span>
+								<span class="hvl-social-card-text">
+									<span class="hvl-social-card-label"><?php echo esc_html( $srow['label'] ); ?></span>
+									<span class="hvl-social-card-value" dir="ltr"><?php echo esc_html( $srow['value'] ); ?></span>
+								</span>
+								<span class="hvl-social-card-arrow material-symbols-outlined" aria-hidden="true">chevron_left</span>
+							</a>
+						<?php endforeach; ?>
+					</div>
+				</section>
+				<?php endif; ?>
+
+				<?php if ( $lawyer_accepts_any ) : ?>
 				<div id="calendar" class="tab-content<?php echo ( 'calendar' === $first_tab_id ) ? ' active' : ''; ?>">
 					<section class="content-block">
 						<h2 class="block-title">
@@ -468,15 +710,25 @@ get_header();
 							<?php echo esc_html__( 'رزرو نوبت', 'hello-elementor' ); ?>
 						</h2>
 						<p class="text-on-surface-variant text-sm" style="line-height:1.85;margin-bottom:1.25rem;">
-							<?php echo esc_html__( 'تکمیل رزرو از صفحهٔ بعد انجام می‌شود.', 'hello-elementor' ); ?>
+							<?php echo esc_html__( 'نوع مشاوره را انتخاب کنید تا به صفحهٔ ثبت رزرو منتقل شوید.', 'hello-elementor' ); ?>
 						</p>
-						<div style="text-align:center;">
-							<a href="<?php echo esc_url( $reservation_url ); ?>" class="btn-primary-sm" style="display:inline-block;padding:1rem 2.5rem;">
-								<?php echo esc_html__( 'ادامهٔ رزرو', 'hello-elementor' ); ?>
-							</a>
+						<div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;">
+							<?php if ( $lawyer_accepts_inperson ) : ?>
+								<a href="<?php echo esc_url( add_query_arg( [ 'service' => 'مشاوره حضوری' ], $reservation_url ) ); ?>" class="btn-primary-sm" style="display:inline-flex;align-items:center;gap:.5rem;padding:1rem 2rem;">
+									<span class="material-symbols-outlined">apartment</span>
+									<?php echo esc_html__( 'رزرو نوبت حضوری', 'hello-elementor' ); ?>
+								</a>
+							<?php endif; ?>
+							<?php if ( $lawyer_accepts_phone ) : ?>
+								<a href="<?php echo esc_url( add_query_arg( [ 'service' => 'مشاوره تلفنی' ], $reservation_url ) ); ?>" class="btn-primary-sm" style="display:inline-flex;align-items:center;gap:.5rem;padding:1rem 2rem;background:var(--secondary-container,#fed977);color:#2d2200;">
+									<span class="material-symbols-outlined">call</span>
+									<?php echo esc_html__( 'رزرو مشاوره تلفنی', 'hello-elementor' ); ?>
+								</a>
+							<?php endif; ?>
 						</div>
 					</section>
 				</div>
+				<?php endif; ?>
 			</div>
 			<?php if ( $has_office_sidebar ) : ?>
 			<div class="profile-sidebar-content">
@@ -495,10 +747,19 @@ get_header();
 						<?php echo esc_html( $office_address ); ?>
 					</p>
 					<?php endif; ?>
-					<?php if ( '' !== $mobile ) : ?>
+					<?php
+					$sidebar_reveal_mobile = ( '1' === (string) get_post_meta( $post_id, 'hvl_reveal_mobile', true ) );
+					$sidebar_hide_mobile   = ( '1' === (string) get_post_meta( $post_id, 'hvl_hide_mobile', true ) );
+					$sidebar_mobile_holder = '09121111111';
+					?>
+					<?php if ( '' !== $mobile && ! $sidebar_hide_mobile ) : ?>
 						<p class="text-xs text-on-surface-variant" style="margin-bottom:.35rem;">
 							<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">smartphone</span>
-							<a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $mobile ) ); ?>"><?php echo esc_html( $mobile ); ?></a>
+							<?php if ( $sidebar_reveal_mobile ) : ?>
+								<a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $mobile ) ); ?>"><?php echo esc_html( $mobile ); ?></a>
+							<?php else : ?>
+								<span class="hvl-mobile-blur" aria-label="<?php esc_attr_e( 'شماره مخفی', 'hello-elementor' ); ?>" dir="ltr"><?php echo esc_html( $sidebar_mobile_holder ); ?></span>
+							<?php endif; ?>
 						</p>
 					<?php endif; ?>
 					<?php if ( '' !== $office_mobile && trim( (string) $office_mobile ) !== trim( (string) $mobile ) ) : ?>
@@ -513,8 +774,54 @@ get_header();
 						<a dir="ltr" href="<?php echo esc_url( 'tel:' . preg_replace( '/\D+/', '', $office_phone ) ); ?>"><?php echo esc_html( $office_phone ); ?></a>
 					</p>
 					<?php endif; ?>
-					<?php if ( '' !== $office_working_hours ) : ?>
-					<p class="text-xs text-on-surface-variant">
+					<?php
+					// ── Structured working-hours display ──
+					$hvl_wh_json = (string) get_post_meta( $post_id, 'hvl_office_working_hours_json', true );
+					$hvl_wh_data = '' !== $hvl_wh_json ? json_decode( $hvl_wh_json, true ) : null;
+					$hvl_wh_days_def = [
+						'shanbe'  => [ 'label' => 'شنبه',     'js' => 6 ],
+						'1shanbe' => [ 'label' => 'یک‌شنبه',  'js' => 0 ],
+						'2shanbe' => [ 'label' => 'دوشنبه',   'js' => 1 ],
+						'3shanbe' => [ 'label' => 'سه‌شنبه',   'js' => 2 ],
+						'4shanbe' => [ 'label' => 'چهارشنبه', 'js' => 3 ],
+						'5shanbe' => [ 'label' => 'پنج‌شنبه', 'js' => 4 ],
+						'jome'    => [ 'label' => 'جمعه',     'js' => 5 ],
+					];
+					$hvl_today_js = (int) wp_date( 'w' );
+					$hvl_wh_to_fa = function ( $s ) {
+						return str_replace( [ '0','1','2','3','4','5','6','7','8','9' ], [ '۰','۱','۲','۳','۴','۵','۶','۷','۸','۹' ], (string) $s );
+					};
+					?>
+					<?php if ( is_array( $hvl_wh_data ) && ! empty( $hvl_wh_data ) ) : ?>
+					<div class="hvl-wh-public">
+						<h3 class="hvl-wh-public-title">
+							<span class="material-symbols-outlined">schedule</span>
+							<?php echo esc_html__( 'ساعات کاری', 'hello-elementor' ); ?>
+						</h3>
+						<ul class="hvl-wh-public-list">
+							<?php foreach ( $hvl_wh_days_def as $dkey => $dmeta ) :
+								$row     = isset( $hvl_wh_data[ $dkey ] ) && is_array( $hvl_wh_data[ $dkey ] ) ? $hvl_wh_data[ $dkey ] : [];
+								$is_open = ! empty( $row['open'] );
+								$from    = isset( $row['from'] ) ? (string) $row['from'] : '';
+								$to      = isset( $row['to'] )   ? (string) $row['to']   : '';
+								$is_today = ( (int) $dmeta['js'] === $hvl_today_js );
+								?>
+								<li class="hvl-wh-public-row<?php echo $is_open ? ' is-open' : ' is-closed'; ?><?php echo $is_today ? ' is-today' : ''; ?>">
+									<span class="hvl-wh-public-day">
+										<?php echo esc_html( $dmeta['label'] ); ?>
+										<?php if ( $is_today ) : ?><em class="hvl-wh-public-today">امروز</em><?php endif; ?>
+									</span>
+									<?php if ( $is_open && '' !== $from && '' !== $to ) : ?>
+										<span class="hvl-wh-public-time" dir="ltr"><?php echo esc_html( $hvl_wh_to_fa( $from ) . ' – ' . $hvl_wh_to_fa( $to ) ); ?></span>
+									<?php else : ?>
+										<span class="hvl-wh-public-closed">تعطیل</span>
+									<?php endif; ?>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					</div>
+					<?php elseif ( '' !== $office_working_hours ) : ?>
+					<p class="text-xs text-on-surface-variant" style="line-height:1.85;">
 						<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">schedule</span>
 						<?php echo esc_html( $office_working_hours ); ?>
 					</p>

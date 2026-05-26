@@ -3,7 +3,8 @@
  * Lawyer post meta + taxonomy field map for admin و قالب.
  *
  * Import column names (suggested): full_name → post_title; photo_url → featured image sideload;
- * province_slug/name → hvl_province; city_slug/name → hvl_city; mobile → hvl_mobile;
+ * province_slug/name → hvl_province; city_slug/name → hvl_city (linked to province via term meta hvl_province_id);
+ * mobile → hvl_mobile;
  * office_mobile → hvl_office_mobile; office_phone → hvl_office_phone; office_address → hvl_office_address;
  * license_no → hvl_license_no; license_issued → hvl_license_issued (YYYY-MM-DD); license_expires → hvl_license_expires (YYYY-MM-DD);
  * lawyer_grade → hvl_lawyer_grade; license_file_url → hvl_license_file_url;
@@ -14,6 +15,94 @@
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
+}
+
+/**
+ * Normalize digits to ASCII 0-9 (Persian/Arabic → Latin).
+ *
+ * @param string $value Raw input.
+ * @return string Digits only.
+ */
+if ( ! function_exists( 'hovalvakil_lawyer_digits_to_ascii' ) ) {
+function hovalvakil_lawyer_digits_to_ascii( $value ) {
+	$value = (string) $value;
+	$value = strtr(
+		$value,
+		[
+			'۰' => '0',
+			'۱' => '1',
+			'۲' => '2',
+			'۳' => '3',
+			'۴' => '4',
+			'۵' => '5',
+			'۶' => '6',
+			'۷' => '7',
+			'۸' => '8',
+			'۹' => '9',
+			'٠' => '0',
+			'١' => '1',
+			'٢' => '2',
+			'٣' => '3',
+			'٤' => '4',
+			'٥' => '5',
+			'٦' => '6',
+			'٧' => '7',
+			'٨' => '8',
+			'٩' => '9',
+		]
+	);
+	$ascii = preg_replace( '/\D+/u', '', $value ) ?? '';
+	if ( '' !== $ascii ) {
+		return $ascii;
+	}
+	if ( preg_match_all( '/\p{Nd}/u', $value, $m ) && ! empty( $m[0] ) && function_exists( 'mb_ord' ) ) {
+		$out = '';
+		foreach ( $m[0] as $ch ) {
+			$ord = mb_ord( $ch, 'UTF-8' );
+			if ( false === $ord ) {
+				continue;
+			}
+			if ( $ord >= 0x30 && $ord <= 0x39 ) {
+				$out .= (string) ( $ord - 0x30 );
+			} elseif ( $ord >= 0x660 && $ord <= 0x669 ) {
+				$out .= (string) ( $ord - 0x660 );
+			} elseif ( $ord >= 0x6F0 && $ord <= 0x6F9 ) {
+				$out .= (string) ( $ord - 0x6F0 );
+			}
+		}
+		return $out;
+	}
+	return '';
+}
+}
+
+/**
+ * Convert ASCII digits to Persian digits for display.
+ *
+ * @param string $value Raw input.
+ * @return string
+ */
+if ( ! function_exists( 'hovalvakil_lawyer_digits_to_fa' ) ) {
+function hovalvakil_lawyer_digits_to_fa( $value ) {
+	if ( function_exists( 'hovalvakil_to_fa_digits' ) ) {
+		return hovalvakil_to_fa_digits( $value );
+	}
+	return strtr(
+		(string) $value,
+		[
+			'0' => '۰',
+			'1' => '۱',
+			'2' => '۲',
+			'3' => '۳',
+			'4' => '۴',
+			'5' => '۵',
+			'6' => '۶',
+			'7' => '۷',
+			'8' => '۸',
+			'9' => '۹',
+		]
+	);
+}
 }
 
 /**
@@ -291,30 +380,6 @@ function hovalvakil_lawyer_image_onerror_placeholder_attr() {
 	$js     = 'this.onerror=null;this.src=' . wp_json_encode( $url ) . ';this.classList.add(\'hvl-img-fallback\');';
 	$cached = ' onerror="' . esc_attr( $js ) . '"';
 	return $cached;
-}
-
-/**
- * ASCII digits to Persian digits for short UI strings.
- *
- * @param string $value Input.
- * @return string
- */
-function hovalvakil_lawyer_digits_to_fa( $value ) {
-	return strtr(
-		(string) $value,
-		[
-			'0' => '۰',
-			'1' => '۱',
-			'2' => '۲',
-			'3' => '۳',
-			'4' => '۴',
-			'5' => '۵',
-			'6' => '۶',
-			'7' => '۷',
-			'8' => '۸',
-			'9' => '۹',
-		]
-	);
 }
 
 /**

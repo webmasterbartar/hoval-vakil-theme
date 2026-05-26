@@ -75,11 +75,49 @@ $province_terms_selected = hovalvakil_get_param_array( 'province_term' ); // pro
 $grade_slugs             = [];
 foreach ( hovalvakil_get_param_array( 'grade' ) as $g_raw ) {
 	$g = sanitize_key( (string) $g_raw );
-	if ( in_array( $g, [ 'p1', 'p2', 'karamooz' ], true ) ) {
+	if ( in_array( $g, [ 'p1', 'karamooz' ], true ) ) {
 		$grade_slugs[] = $g;
 	}
 }
 $grade_slugs = array_values( array_unique( $grade_slugs ) );
+
+$hvl_archive_route = function_exists( 'hovalvakil_lawyer_archive_route_context' )
+	? hovalvakil_lawyer_archive_route_context()
+	: [
+		'route_type'              => '',
+		'route_slug'              => '',
+		'grade_internal'          => '',
+		'grade_slugs'             => [],
+		'province_terms_selected' => [],
+		'city_terms_selected'     => [],
+		'base_path'               => '',
+	];
+
+if ( empty( $grade_slugs ) && ! empty( $hvl_archive_route['grade_slugs'] ) ) {
+	$grade_slugs = $hvl_archive_route['grade_slugs'];
+}
+if ( empty( $province_terms_selected ) && ! empty( $hvl_archive_route['province_terms_selected'] ) ) {
+	$province_terms_selected = $hvl_archive_route['province_terms_selected'];
+}
+// Route /ostan/tehran/: always resolve province from URL path (rewrite may not set query vars).
+if ( empty( $province_terms_selected ) && preg_match( '#(?:archive/)?ostan/([^/]+)#', (string) hovalvakil_current_request_slug(), $m ) ) {
+	$path_province = trim( (string) $m[1] );
+	if ( '' !== $path_province && function_exists( 'hovalvakil_lawyer_archive_resolve_term' ) ) {
+		$route_prov_term = hovalvakil_lawyer_archive_resolve_term( $path_province, 'hvl_province' );
+		if ( $route_prov_term instanceof WP_Term ) {
+			$province_terms_selected = [ (string) $route_prov_term->slug ];
+			$hvl_archive_route['route_type']              = 'province';
+			$hvl_archive_route['route_slug']              = (string) $route_prov_term->slug;
+			$hvl_archive_route['province_terms_selected'] = $province_terms_selected;
+			if ( empty( $hvl_archive_route['base_path'] ) && function_exists( 'hovalvakil_lawyer_archive_province_url' ) ) {
+				$hvl_archive_route['base_path'] = hovalvakil_lawyer_archive_province_url( (string) $route_prov_term->slug );
+			}
+		}
+	}
+}
+if ( empty( $city_terms_selected ) && ! empty( $hvl_archive_route['city_terms_selected'] ) ) {
+	$city_terms_selected = $hvl_archive_route['city_terms_selected'];
+}
 
 $tax_query = [];
 
@@ -96,6 +134,14 @@ $selected_city_slug  = ! empty( $city_terms_selected ) ? $city_terms_selected[0]
 $province_terms_selected = array_values( array_unique( array_filter( $province_terms_selected ) ) );
 $selected_province_slug    = ! empty( $province_terms_selected ) ? $province_terms_selected[0] : '';
 
+$archive_province_term_id = 0;
+if ( ! empty( $province_terms_selected ) && function_exists( 'hovalvakil_lawyer_resolve_province_terms' ) ) {
+	$resolved_prov_terms = hovalvakil_lawyer_resolve_province_terms( $province_terms_selected );
+	if ( ! empty( $resolved_prov_terms[0] ) && $resolved_prov_terms[0] instanceof WP_Term ) {
+		$archive_province_term_id = (int) $resolved_prov_terms[0]->term_id;
+	}
+}
+
 if ( '' !== $city ) {
 	// Keep query param visible in URL but use slug-based filtering.
 }
@@ -109,11 +155,24 @@ if ( ! empty( $city_terms_selected ) ) {
 }
 
 if ( ! empty( $province_terms_selected ) ) {
-	$tax_query[] = [
-		'taxonomy' => 'hvl_province',
-		'field'    => 'slug',
-		'terms'    => $province_terms_selected,
-	];
+	$province_clause = function_exists( 'hovalvakil_lawyer_build_province_filter_tax_query' )
+		? hovalvakil_lawyer_build_province_filter_tax_query( $province_terms_selected )
+		: null;
+	if ( is_array( $province_clause ) && ! empty( $province_clause ) ) {
+		$tax_query[] = $province_clause;
+	} else {
+		$prov_terms = function_exists( 'hovalvakil_lawyer_resolve_province_terms' )
+			? hovalvakil_lawyer_resolve_province_terms( $province_terms_selected )
+			: [];
+		if ( ! empty( $prov_terms ) ) {
+			$tax_query[] = [
+				'taxonomy'         => 'hvl_province',
+				'field'            => 'term_id',
+				'terms'            => array_map( static fn( $t ) => (int) $t->term_id, $prov_terms ),
+				'include_children' => false,
+			];
+		}
+	}
 }
 
 if ( count( $tax_query ) > 1 ) {
@@ -121,6 +180,9 @@ if ( count( $tax_query ) > 1 ) {
 }
 
 $paged = max( 1, (int) get_query_var( 'paged' ) );
+if ( ! empty( $hvl_archive_route['paged'] ) ) {
+	$paged = max( 1, (int) $hvl_archive_route['paged'] );
+}
 
 $base_query_args = [
 	'post_type'      => 'hvl_lawyer',
@@ -158,21 +220,12 @@ $province_terms = get_terms(
 	]
 );
 
-// When province filter is active, city dropdown shows only cities that have lawyers in selected province(s).
-if ( ! empty( $province_terms_selected ) && ! is_wp_error( $city_terms ) && function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' ) ) {
-	$pairs = hovalvakil_home_city_province_pairs_for_lawyers();
-	$allowed_city_ids = [];
-	foreach ( $pairs as $pair ) {
-		$prov = $pair['province'] ?? null;
-		$city = $pair['city'] ?? null;
-		if ( ! $prov instanceof WP_Term || ! $city instanceof WP_Term ) {
-			continue;
-		}
-		if ( in_array( (string) $prov->slug, $province_terms_selected, true ) ) {
-			$allowed_city_ids[] = (int) $city->term_id;
-		}
-	}
-	$allowed_city_ids = array_values( array_unique( array_filter( $allowed_city_ids ) ) );
+// When province filter is active, city dropdown shows only cities linked to selected province(s).
+if ( ! empty( $province_terms_selected ) && ! is_wp_error( $city_terms ) ) {
+	$allowed_city_ids = function_exists( 'hovalvakil_get_city_ids_for_provinces' )
+		? hovalvakil_get_city_ids_for_provinces( $province_terms_selected )
+		: [];
+
 	if ( ! empty( $allowed_city_ids ) ) {
 		$city_terms = array_values(
 			array_filter(
@@ -182,6 +235,32 @@ if ( ! empty( $province_terms_selected ) && ! is_wp_error( $city_terms ) && func
 				}
 			)
 		);
+	} elseif ( function_exists( 'hovalvakil_home_city_province_pairs_for_lawyers' ) ) {
+		$pairs = hovalvakil_home_city_province_pairs_for_lawyers();
+		$allowed_city_ids = [];
+		foreach ( $pairs as $pair ) {
+			$prov = $pair['province'] ?? null;
+			$city = $pair['city'] ?? null;
+			if ( ! $prov instanceof WP_Term || ! $city instanceof WP_Term ) {
+				continue;
+			}
+			if ( in_array( (string) $prov->slug, $province_terms_selected, true ) ) {
+				$allowed_city_ids[] = (int) $city->term_id;
+			}
+		}
+		$allowed_city_ids = array_values( array_unique( array_filter( $allowed_city_ids ) ) );
+		if ( ! empty( $allowed_city_ids ) ) {
+			$city_terms = array_values(
+				array_filter(
+					$city_terms,
+					static function ( $term ) use ( $allowed_city_ids ) {
+						return $term instanceof WP_Term && in_array( (int) $term->term_id, $allowed_city_ids, true );
+					}
+				)
+			);
+		} else {
+			$city_terms = [];
+		}
 	} else {
 		$city_terms = [];
 	}
@@ -288,8 +367,15 @@ if ( '' !== $q ) {
 	$query_args = $base_query_args;
 }
 
-$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = ( '' === $q );
-$lawyers_query                                       = new WP_Query( $query_args );
+$GLOBALS['hovalvakil_lawyer_query_order_image_first'] = ( '' === $q && empty( $province_terms_selected ) );
+$province_filter_enabled                              = false;
+if ( ! empty( $province_terms_selected ) && function_exists( 'hovalvakil_lawyer_enable_province_filter' ) ) {
+	$province_filter_enabled = hovalvakil_lawyer_enable_province_filter( $province_terms_selected );
+}
+$lawyers_query = new WP_Query( $query_args );
+if ( $province_filter_enabled && function_exists( 'hovalvakil_lawyer_disable_province_filter' ) ) {
+	hovalvakil_lawyer_disable_province_filter();
+}
 unset( $GLOBALS['hovalvakil_lawyer_query_order_image_first'] );
 
 $hvl_archive_lawyer_placeholder = function_exists( 'hovalvakil_theme_lawyer_placeholder_url' )
@@ -368,11 +454,10 @@ get_header();
 			}
 		}
 		if ( ! empty( $grade_slugs ) ) {
-			$grade_labels = [
-				'p1'       => __( 'وکیل پایه یک', 'hello-elementor' ),
-				'p2'       => __( 'وکیل پایه دو', 'hello-elementor' ),
-				'karamooz' => __( 'کارآموز وکالت', 'hello-elementor' ),
-			];
+			$grade_labels = [];
+			foreach ( hovalvakil_lawyer_archive_grade_map() as $gs => $gdata ) {
+				$grade_labels[ (string) $gs ] = (string) ( $gdata['label'] ?? $gs );
+			}
 			$grade_names = [];
 			foreach ( $grade_slugs as $gs ) {
 				if ( isset( $grade_labels[ $gs ] ) ) {
@@ -411,13 +496,9 @@ get_header();
 					<h3><?php esc_html_e( 'پایه', 'hello-elementor' ); ?></h3>
 					<div id="archive-grade-group" class="archive-filter-list-scroll">
 						<?php
-						$archive_grade_sidebar = [
-							'p1'       => __( 'وکیل پایه یک', 'hello-elementor' ),
-							'p2'       => __( 'وکیل پایه دو', 'hello-elementor' ),
-							'karamooz' => __( 'کارآموز وکالت', 'hello-elementor' ),
-						];
-						foreach ( $archive_grade_sidebar as $gval => $glabel ) :
+						foreach ( hovalvakil_lawyer_archive_grade_map() as $gval => $gdata ) :
 							$gval          = (string) $gval;
+							$glabel        = (string) ( $gdata['label'] ?? $gval );
 							$grade_checked = in_array( $gval, $grade_slugs, true );
 							?>
 							<label>
@@ -662,7 +743,27 @@ get_header();
 	const ajaxApiBase = <?php echo wp_json_encode( esc_url_raw( rest_url( 'hovalvakil/v1/lawyers' ) ) ); ?>;
 	const archiveLawyerPlaceholder = <?php echo wp_json_encode( esc_url_raw( $hvl_archive_lawyer_placeholder ) ); ?>;
 	const archiveInitialSlugs = <?php echo wp_json_encode( [ 'city_term' => $selected_city_slug, 'province_term' => $selected_province_slug, 'grade' => $grade_slugs ], JSON_UNESCAPED_UNICODE ); ?>;
-	const archiveGradeLabels = { p1: 'وکیل پایه یک', p2: 'وکیل پایه دو', karamooz: 'کارآموز وکالت' };
+	const archiveProvinceTermId = <?php echo (int) $archive_province_term_id; ?>;
+	const archiveRouteContext = <?php echo wp_json_encode(
+		[
+			'route_type'              => (string) ( $hvl_archive_route['route_type'] ?? '' ),
+			'route_slug'              => (string) ( $hvl_archive_route['route_slug'] ?? '' ),
+			'grade_internal'          => (string) ( $hvl_archive_route['grade_internal'] ?? '' ),
+			'base_path'               => (string) ( $hvl_archive_route['base_path'] ?? '' ),
+			'province_terms_selected' => array_values( $province_terms_selected ),
+			'city_terms_selected'     => array_values( $city_terms_selected ),
+			'province_term_id'        => (int) $archive_province_term_id,
+		],
+		JSON_UNESCAPED_UNICODE
+	); ?>;
+	const archiveMainUrl = <?php echo wp_json_encode( esc_url_raw( trailingslashit( get_post_type_archive_link( 'hvl_lawyer' ) ) ) ); ?>;
+	const archiveGradeLabels = <?php
+		$grade_label_js = [];
+		foreach ( hovalvakil_lawyer_archive_grade_map() as $gs => $gd ) {
+			$grade_label_js[ (string) $gs ] = (string) ( $gd['label'] ?? $gs );
+		}
+		echo wp_json_encode( $grade_label_js, JSON_UNESCAPED_UNICODE );
+	?>;
 	const ARCHIVE_PER_PAGE = 20;
 	let archiveDebounceTimer = null;
 	let archiveCurrentPage = 1;
@@ -783,6 +884,73 @@ get_header();
 			.filter(Boolean);
 	}
 
+	function archiveDetectRouteTypeFromPath() {
+		const path = (window.location.pathname || '').replace(/\/+$/, '');
+		if (/\/(?:archive\/)?ostan\/[^/]+/.test(path)) return 'province';
+		if (/\/(?:archive\/)?shahr\/[^/]+/.test(path)) return 'city';
+		return '';
+	}
+
+	function archiveRouteSegmentFromPath(kind) {
+		const path = (window.location.pathname || '').replace(/\/+$/, '');
+		const re = new RegExp(`/(?:archive/)?${kind}/([^/]+)`);
+		const m = path.match(re);
+		return m && m[1] ? decodeURIComponent(m[1]) : '';
+	}
+
+	/** Province slugs from clean URL route (/ostan/tehran/) when checkboxes are not synced yet. */
+	function archiveRouteProvinceSlugs() {
+		const ctx = archiveRouteContext || {};
+		const routeType = ctx.route_type || archiveDetectRouteTypeFromPath();
+		if (routeType !== 'province') return [];
+		const fromRoute = Array.isArray(ctx.province_terms_selected) && ctx.province_terms_selected.length
+			? ctx.province_terms_selected
+			: (ctx.route_slug ? [ctx.route_slug] : []);
+		if (fromRoute.length) {
+			return fromRoute.map((s) => String(s || '').trim()).filter(Boolean);
+		}
+		const seg = archiveRouteSegmentFromPath('ostan');
+		return seg ? [seg] : [];
+	}
+
+	function archiveRouteCitySlugs() {
+		const ctx = archiveRouteContext || {};
+		const routeType = ctx.route_type || archiveDetectRouteTypeFromPath();
+		if (routeType !== 'city') return [];
+		const fromRoute = Array.isArray(ctx.city_terms_selected) && ctx.city_terms_selected.length
+			? ctx.city_terms_selected
+			: (ctx.route_slug ? [ctx.route_slug] : []);
+		if (fromRoute.length) {
+			return fromRoute.map((s) => String(s || '').trim()).filter(Boolean);
+		}
+		const seg = archiveRouteSegmentFromPath('shahr');
+		return seg ? [seg] : [];
+	}
+
+	function archiveMergedProvinceSlugs() {
+		const selectedProvince = provinceSelect?.value?.trim() || '';
+		const provinceSlugs = getCheckedValues('province_term[]');
+		return Array.from(
+			new Set([
+				...archiveRouteProvinceSlugs(),
+				...provinceSlugs,
+				...(selectedProvince ? [selectedProvince] : []),
+			])
+		);
+	}
+
+	function archiveMergedCitySlugs() {
+		const selectedCity = citySelect?.value?.trim() || '';
+		const citySlugs = getCheckedValues('city_term[]');
+		return Array.from(
+			new Set([
+				...archiveRouteCitySlugs(),
+				...citySlugs,
+				...(selectedCity ? [selectedCity] : []),
+			])
+		);
+	}
+
 	function syncTopFiltersFromSidebar() {
 		const citySlugs = getCheckedValues('city_term[]');
 		const provinceSlugs = getCheckedValues('province_term[]');
@@ -818,11 +986,9 @@ get_header();
 		if (!archiveActiveFiltersEl) return;
 		const qTrim = qInput?.value?.trim() || '';
 		const qLine = qTrim.length >= 2 ? qTrim : '';
-		const selectedCity = citySelect?.value?.trim() || '';
-		const selectedProvince = provinceSelect?.value?.trim() || '';
 		const mergedGradeSlugs = getCheckedValues('grade[]');
-		const mergedCitySlugs = Array.from(new Set([...getCheckedValues('city_term[]'), ...(selectedCity ? [selectedCity] : [])]));
-		const mergedProvinceSlugs = Array.from(new Set([...getCheckedValues('province_term[]'), ...(selectedProvince ? [selectedProvince] : [])]));
+		const mergedCitySlugs = archiveMergedCitySlugs();
+		const mergedProvinceSlugs = archiveMergedProvinceSlugs();
 		const parts = [];
 		if (qLine) parts.push(`جستجو: ${qLine}`);
 		if (mergedProvinceSlugs.length) {
@@ -846,16 +1012,46 @@ get_header();
 		archiveActiveFiltersEl.textContent = `فیلتر فعال: ${parts.join(' | ')}`;
 	}
 
-	function updateArchiveUrlState({ q, provinceSlugs, citySlugs, gradeSlugs, page }) {
+	function archiveBuildPublicUrl({ q, provinceSlugs, citySlugs, gradeSlugs, page }) {
+		const ctx = archiveRouteContext || {};
+		const grades = (gradeSlugs || []).filter((g) => archiveGradeLabels[g]);
+		const provs = provinceSlugs || [];
+		const cities = citySlugs || [];
+		const qTrim = (q || '').trim();
+
+		function withPage(path) {
+			let out = path.replace(/\/+$/, '');
+			if (page && page > 1) out += '/page/' + page;
+			return out.endsWith('/') ? out : out + '/';
+		}
+
+		if (!qTrim) {
+			if (ctx.route_type === 'grade' && grades.length === 1 && grades[0] === ctx.grade_internal && !provs.length && !cities.length && ctx.base_path) {
+				return withPage(ctx.base_path);
+			}
+			if (ctx.route_type === 'province' && provs.length === 1 && provs[0] === ctx.route_slug && !cities.length && !grades.length && ctx.base_path) {
+				return withPage(ctx.base_path);
+			}
+			if (ctx.route_type === 'city' && cities.length === 1 && cities[0] === ctx.route_slug && !provs.length && !grades.length && ctx.base_path) {
+				return withPage(ctx.base_path);
+			}
+		}
+
 		const params = new URLSearchParams();
-		if (q) params.set('q', q);
-		provinceSlugs.forEach((slug) => params.append('province_term[]', slug));
-		citySlugs.forEach((slug) => params.append('city_term[]', slug));
-		(gradeSlugs || []).forEach((g) => {
-			if (g && archiveGradeLabels[g]) params.append('grade[]', g);
-		});
+		if (qTrim) params.set('q', qTrim);
+		provs.forEach((slug) => params.append('province_term[]', slug));
+		cities.forEach((slug) => params.append('city_term[]', slug));
+		grades.forEach((g) => params.append('grade[]', g));
 		if (page && page > 1) params.set('paged', String(page));
-		const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+
+		const base = (ctx.base_path && (grades.length || provs.length || cities.length || qTrim))
+			? ctx.base_path.replace(/\/+$/, '') + '/'
+			: archiveMainUrl;
+		return `${base}${params.toString() ? `?${params.toString()}` : ''}`;
+	}
+
+	function updateArchiveUrlState({ q, provinceSlugs, citySlugs, gradeSlugs, page }) {
+		const nextUrl = archiveBuildPublicUrl({ q, provinceSlugs, citySlugs, gradeSlugs, page });
 		window.history.replaceState({}, '', nextUrl);
 	}
 
@@ -957,18 +1153,19 @@ get_header();
 		const qTrim = qInput?.value?.trim() || '';
 		// Match API: very short q triggers "strong search" with empty matches → no posts; skip sending.
 		const q = qTrim.length >= 2 ? qTrim : '';
-		syncTopFiltersFromSidebar();
-		const selectedCity = citySelect?.value?.trim() || '';
-		const selectedProvince = provinceSelect?.value?.trim() || '';
-		const citySlugs = getCheckedValues('city_term[]');
-		const provinceSlugs = getCheckedValues('province_term[]');
-
-		const mergedCitySlugs = Array.from(new Set([...citySlugs, ...(selectedCity ? [selectedCity] : [])]));
-		const mergedProvinceSlugs = Array.from(new Set([...provinceSlugs, ...(selectedProvince ? [selectedProvince] : [])]));
+		const mergedCitySlugs = archiveMergedCitySlugs();
+		const mergedProvinceSlugs = archiveMergedProvinceSlugs();
 		const mergedGradeSlugs = getCheckedValues('grade[]').filter((g) => archiveGradeLabels[g]);
 
 		const params = new URLSearchParams({ per_page: String(ARCHIVE_PER_PAGE), page: String(page) });
 		if (q) params.set('q', q);
+		const provTermId =
+			archiveProvinceTermId > 0
+				? archiveProvinceTermId
+				: Number(archiveRouteContext && archiveRouteContext.province_term_id) || 0;
+		if (provTermId > 0) {
+			params.set('province_term_id', String(provTermId));
+		}
 		if (mergedProvinceSlugs.length) params.set('province_term', mergedProvinceSlugs.join(','));
 		if (mergedCitySlugs.length) params.set('city_term', mergedCitySlugs.join(','));
 		if (mergedGradeSlugs.length) params.set('grade', mergedGradeSlugs.join(','));
@@ -1143,8 +1340,16 @@ get_header();
 		const urlCityList = getQuerySlugList('city_term');
 		const urlProvList = getQuerySlugList('province_term');
 		const urlGradeList = getQueryGradeSlugs();
-		const firstCity = urlCityList[0] || (archiveInitialSlugs && archiveInitialSlugs.city_term) || '';
-		const firstProv = urlProvList[0] || (archiveInitialSlugs && archiveInitialSlugs.province_term) || '';
+		const firstCity =
+			urlCityList[0] ||
+			(archiveInitialSlugs && archiveInitialSlugs.city_term) ||
+			archiveRouteCitySlugs()[0] ||
+			'';
+		const firstProv =
+			urlProvList[0] ||
+			(archiveInitialSlugs && archiveInitialSlugs.province_term) ||
+			archiveRouteProvinceSlugs()[0] ||
+			'';
 		const initGrades = Array.isArray(archiveInitialSlugs && archiveInitialSlugs.grade)
 			? archiveInitialSlugs.grade
 					.map((g) => String(g || '').trim().toLowerCase())
@@ -1175,16 +1380,29 @@ get_header();
 		}
 
 		// Keep sidebar filters active based on URL/query, even if select options are temporarily narrowed.
-		setSidebarChecksBySlugs('city_term[]', urlCityList.length ? urlCityList : (firstCity ? [firstCity] : []));
-		setSidebarChecksBySlugs('province_term[]', urlProvList.length ? urlProvList : (firstProv ? [firstProv] : []));
+		const provChecks = urlProvList.length
+			? urlProvList
+			: (firstProv ? [firstProv] : archiveRouteProvinceSlugs());
+		const cityChecks = urlCityList.length
+			? urlCityList
+			: (firstCity ? [firstCity] : archiveRouteCitySlugs());
+		setSidebarChecksBySlugs('city_term[]', cityChecks);
+		setSidebarChecksBySlugs('province_term[]', provChecks);
 		setSidebarChecksBySlugs('grade[]', mergedGrades);
 
 		syncSidebarCheckboxesFromTopSelects();
-		syncTopFiltersFromSidebar();
 		updateArchiveActiveFiltersDisplay();
 	}
 
 	initArchiveFiltersFromPageState();
+
+	// Route landing (/ostan/tehran/, /shahr/…): replace PHP list with REST (avoids flash of unfiltered lawyers).
+	const routeType =
+		(archiveRouteContext && archiveRouteContext.route_type) || archiveDetectRouteTypeFromPath();
+	if ((routeType === 'province' || routeType === 'city') && resultsList) {
+		showArchiveSkeleton(ARCHIVE_PER_PAGE);
+		runArchiveAjaxFilter(1);
+	}
 
 </script>
 <style>

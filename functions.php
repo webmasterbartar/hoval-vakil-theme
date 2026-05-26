@@ -220,14 +220,19 @@ require get_template_directory() . '/includes/settings-functions.php';
 
 // Header & footer styling option, inside Elementor
 require get_template_directory() . '/includes/elementor-functions.php';
-require get_template_directory() . '/includes/hovalvakil-frontend-bridge.php';
 require get_template_directory() . '/includes/hovalvakil-pages.php';
+require get_template_directory() . '/includes/hovalvakil-frontend-bridge.php';
+require_once get_template_directory() . '/includes/hovalvakil-term-route-slugs.php';
+require_once get_template_directory() . '/includes/hovalvakil-lawyer-archive-routes.php';
 require get_template_directory() . '/includes/hovalvakil-cpt.php';
+require get_template_directory() . '/includes/hovalvakil-location-hierarchy.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-fieldmap.php';
 require get_template_directory() . '/includes/hovalvakil-lawyer-query.php';
 require get_template_directory() . '/includes/hovalvakil-media-control.php';
 require get_template_directory() . '/includes/hovalvakil-api.php';
+require_once get_template_directory() . '/includes/hovalvakil-home-grid.php';
 require get_template_directory() . '/includes/hovalvakil-admin-reservations.php';
+require get_template_directory() . '/includes/hovalvakil-admin-home-grid.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-meta.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-json-settings.php';
 require get_template_directory() . '/includes/hovalvakil-admin-lawyer-featured-purge.php';

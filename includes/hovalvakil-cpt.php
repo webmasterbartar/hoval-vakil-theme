@@ -10,12 +10,75 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Fallback helpers when archive-routes.php is not deployed yet.
+ */
+if ( ! function_exists( 'hovalvakil_lawyer_archive_grade_map' ) ) {
+	function hovalvakil_lawyer_archive_grade_map(): array {
+		return [
+			'p1'       => [
+				'route' => 'paye-yek',
+				'label' => __( 'وکیل پایه یک', 'hello-elementor' ),
+			],
+			'karamooz' => [
+				'route' => 'karamooz',
+				'label' => __( 'کارآموز وکالت', 'hello-elementor' ),
+			],
+		];
+	}
+}
+
+if ( ! function_exists( 'hovalvakil_lawyer_archive_grade_url' ) ) {
+	function hovalvakil_lawyer_archive_grade_url( string $grade_slug ): string {
+		$map = hovalvakil_lawyer_archive_grade_map();
+		$grade_slug = sanitize_key( $grade_slug );
+		if ( isset( $map[ $grade_slug ]['route'] ) ) {
+			return trailingslashit( home_url( '/archive/' . $map[ $grade_slug ]['route'] ) );
+		}
+		return (string) get_post_type_archive_link( 'hvl_lawyer' );
+	}
+}
+
+if ( ! function_exists( 'hovalvakil_lawyer_archive_province_url' ) ) {
+	function hovalvakil_lawyer_archive_province_url( string $term_slug ): string {
+		$term_slug = sanitize_title( $term_slug );
+		if ( '' === $term_slug ) {
+			return (string) get_post_type_archive_link( 'hvl_lawyer' );
+		}
+		return trailingslashit( home_url( '/archive/ostan/' . rawurlencode( $term_slug ) ) );
+	}
+}
+
+if ( ! function_exists( 'hovalvakil_lawyer_archive_city_url' ) ) {
+	function hovalvakil_lawyer_archive_city_url( string $term_slug ): string {
+		$term_slug = sanitize_title( $term_slug );
+		if ( '' === $term_slug ) {
+			return (string) get_post_type_archive_link( 'hvl_lawyer' );
+		}
+		return trailingslashit( home_url( '/archive/shahr/' . rawurlencode( $term_slug ) ) );
+	}
+}
+
+if ( ! function_exists( 'hovalvakil_lawyer_archive_route_context' ) ) {
+	function hovalvakil_lawyer_archive_route_context(): array {
+		return [
+			'route_type'              => '',
+			'route_slug'              => '',
+			'grade_internal'          => '',
+			'grade_slugs'             => [],
+			'province_terms_selected' => [],
+			'city_terms_selected'     => [],
+			'base_path'               => '',
+		];
+	}
+}
+
+/**
  * Flush rewrite rules once when CPTs change.
  *
  * @return void
  */
 function hovalvakil_maybe_flush_rewrite_rules() {
-	$current = '2026-05-09-hvl-lawyer-archive-slug';
+	$current = '2026-05-21-hvl-remove-grade-p2';
 	$saved   = get_option( 'hovalvakil_rewrite_version' );
 
 	if ( $saved === $current ) {
@@ -25,7 +88,7 @@ function hovalvakil_maybe_flush_rewrite_rules() {
 	flush_rewrite_rules( false );
 	update_option( 'hovalvakil_rewrite_version', $current );
 }
-add_action( 'admin_init', 'hovalvakil_maybe_flush_rewrite_rules' );
+add_action( 'init', 'hovalvakil_maybe_flush_rewrite_rules', 99 );
 
 /**
  * Register CPTs and taxonomies.
